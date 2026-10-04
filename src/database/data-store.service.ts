@@ -12,6 +12,22 @@ export interface UserEntity {
   headline?: string;
   createdAt: string;
   refreshToken?: string;
+  isVerified: boolean;
+  verificationTokenHash?: string | null;
+  verificationTokenExpires?: string | null;
+  passwordResetTokenHash?: string | null;
+  passwordResetExpires?: string | null;
+  // Role-specific onboarding fields
+  country?: string;
+  educationLevel?: string;
+  careerInterest?: string;
+  institution?: string;
+  teachingArea?: string;
+  experienceYears?: number | string;
+  companyName?: string;
+  companySize?: string;
+  industry?: string;
+  jobTitle?: string;
 }
 
 export interface LearnerProfileEntity {
@@ -354,6 +370,7 @@ export class DataStoreService implements OnModuleInit {
         role: u.role,
         headline: u.headline,
         createdAt: new Date().toISOString(),
+        isVerified: true,
       });
     }
 

@@ -3,59 +3,126 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { DataStoreService, UserEntity } from '../../database/data-store.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  VerifyEmailDto,
+  ResendVerificationDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  ChangePasswordDto,
+} from './dto/auth.dto';
 import { Role } from '../../common/enums/roles.enum';
+
+interface RateLimitRecord {
+  count: number;
+  firstAttemptAt: number;
+  lastAttemptAt: number;
+}
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly failedLoginAttempts: Map<string, RateLimitRecord> = new Map();
+  private readonly resendRateLimits: Map<string, number> = new Map();
+
   constructor(
     private readonly dataStore: DataStoreService,
     private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto) {
+    // 1. Strictly forbid ADMIN role in public registration
+    if (dto.role === Role.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be registered publicly. They must be provisioned via secure backend governance.',
+      );
+    }
+
+    const emailKey = dto.email.toLowerCase().trim();
     const existing = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === dto.email.toLowerCase(),
+      (u) => u.email.toLowerCase() === emailKey,
     );
     if (existing) {
       throw new ConflictException('An account with this email already exists.');
     }
 
+    // 2. Validate password strength
+    if (dto.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long.');
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const userId = `usr-${Date.now()}`;
+    const role = dto.role || Role.LEARNER;
+
+    // 3. Generate secure verification token (SHA-256 hashed in database)
+    const rawVerificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenHash = crypto
+      .createHash('sha256')
+      .update(rawVerificationToken)
+      .digest('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+
     const newUser: UserEntity = {
       id: userId,
-      email: dto.email.toLowerCase(),
+      email: emailKey,
       passwordHash,
-      name: dto.name,
-      role: dto.role || Role.LEARNER,
-      headline: dto.headline || 'Skillora Explorer',
+      name: dto.name.trim(),
+      role,
+      headline:
+        dto.headline?.trim() ||
+        (role === Role.LEARNER
+          ? 'Skillora AI Learner'
+          : role === Role.EDUCATOR
+          ? 'Skillora Educator'
+          : 'Hiring Partner at Skillora'),
       createdAt: new Date().toISOString(),
+      isVerified: false,
+      verificationTokenHash,
+      verificationTokenExpires,
+      // Role-specific onboarding fields
+      country: dto.country?.trim(),
+      educationLevel: dto.educationLevel?.trim(),
+      careerInterest: dto.careerInterest?.trim(),
+      institution: dto.institution?.trim(),
+      teachingArea: dto.teachingArea?.trim(),
+      experienceYears: dto.experienceYears,
+      companyName: dto.companyName?.trim(),
+      companySize: dto.companySize?.trim(),
+      industry: dto.industry?.trim(),
+      jobTitle: dto.jobTitle?.trim(),
     };
 
     this.dataStore.users.set(userId, newUser);
 
-    // Initialize default profile if learner
-    if (newUser.role === Role.LEARNER) {
+    // 4. Initialize default learner profile if LEARNER
+    if (role === Role.LEARNER) {
       this.dataStore.profiles.set(userId, {
         userId,
         name: newUser.name,
         email: newUser.email,
-        headline: newUser.headline || '',
-        bio: 'Welcome to my Skillora AI verified profile.',
-        degree: '',
-        institution: '',
-        graduationYear: '',
-        targetRole: 'Full-Stack Software Engineer',
+        headline: newUser.headline || 'Skillora Learner',
+        bio: 'Welcome to my Skillora AI verified workforce intelligence profile.',
+        degree: dto.educationLevel || '',
+        institution: dto.institution || '',
+        graduationYear: '2025',
+        targetRole: dto.careerInterest || 'Full-Stack Software Engineer',
         targetCompanies: [],
         preferredMode: 'remote',
         weeklyHours: 15,
         readinessScore: 60,
-        completenessScore: 40,
+        completenessScore: 45,
         skills: [],
         readinessDimensions: {
           technical: 60,
@@ -70,31 +137,263 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(newUser);
+    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
+
+    this.logger.log(
+      `[AUTH] New registration for ${emailKey} (${role}). Verification token generated: ${rawVerificationToken.slice(0, 8)}...`,
+    );
+
     return {
+      message:
+        'Registration successful. A verification email has been dispatched. Please verify your email to unlock all features.',
       user: this.sanitizeUser(newUser),
+      tokens,
+      verificationToken: rawVerificationToken,
+      verificationUrl,
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    if (!dto.token) {
+      throw new BadRequestException('Verification token is required.');
+    }
+
+    const incomingHash = crypto.createHash('sha256').update(dto.token.trim()).digest('hex');
+
+    const user = Array.from(this.dataStore.users.values()).find(
+      (u) => u.verificationTokenHash === incomingHash,
+    );
+
+    if (!user) {
+      throw new BadRequestException(
+        'Invalid or expired verification token. If your account is already verified, you can log in directly.',
+      );
+    }
+
+    if (user.verificationTokenExpires && new Date() > new Date(user.verificationTokenExpires)) {
+      throw new BadRequestException(
+        'Verification token has expired. Please request a new verification link.',
+      );
+    }
+
+    // Mark as verified and invalidate token
+    user.isVerified = true;
+    user.verificationTokenHash = null;
+    user.verificationTokenExpires = null;
+
+    const tokens = await this.generateTokens(user);
+    user.refreshToken = tokens.refreshToken;
+
+    this.logger.log(`[AUTH] Account successfully verified: ${user.email} (${user.role})`);
+
+    return {
+      success: true,
+      message: 'Email address verified successfully. Welcome to Skillora AI!',
+      user: this.sanitizeUser(user),
       tokens,
     };
   }
 
-  async login(dto: LoginDto) {
+  async resendVerification(dto: ResendVerificationDto) {
+    const emailKey = dto.email.toLowerCase().trim();
+
+    // Rate limiting: 60 second cooldown per email
+    const lastSent = this.resendRateLimits.get(emailKey);
+    const now = Date.now();
+    if (lastSent && now - lastSent < 60000) {
+      const waitSeconds = Math.ceil((60000 - (now - lastSent)) / 1000);
+      throw new HttpException(
+        `Please wait ${waitSeconds} seconds before requesting another verification email.`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === dto.email.toLowerCase(),
+      (u) => u.email.toLowerCase() === emailKey,
+    );
+
+    // If already verified or doesn't exist, return clean message to prevent enumeration
+    if (!user) {
+      return {
+        success: true,
+        message: 'If an unverified account with this email exists, a verification link has been dispatched.',
+      };
+    }
+
+    if (user.isVerified) {
+      return {
+        success: true,
+        alreadyVerified: true,
+        message: 'This account is already verified. You may log in directly.',
+      };
+    }
+
+    // Generate new token
+    const rawVerificationToken = crypto.randomBytes(32).toString('hex');
+    user.verificationTokenHash = crypto
+      .createHash('sha256')
+      .update(rawVerificationToken)
+      .digest('hex');
+    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    this.resendRateLimits.set(emailKey, now);
+
+    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
+
+    return {
+      success: true,
+      message: 'A fresh verification email has been dispatched.',
+      verificationToken: rawVerificationToken,
+      verificationUrl,
+    };
+  }
+
+  async login(dto: LoginDto) {
+    const emailKey = dto.email.toLowerCase().trim();
+
+    // Brute-force protection: Max 5 failed attempts in 15 minutes
+    const attemptRecord = this.failedLoginAttempts.get(emailKey);
+    const now = Date.now();
+    if (attemptRecord) {
+      if (now - attemptRecord.firstAttemptAt < 15 * 60 * 1000 && attemptRecord.count >= 5) {
+        const remainingMinutes = Math.ceil((15 * 60 * 1000 - (now - attemptRecord.firstAttemptAt)) / 60000);
+        throw new HttpException(
+          `Too many failed login attempts. Account temporarily locked for security. Please try again in ${remainingMinutes} minutes or reset your password.`,
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      } else if (now - attemptRecord.firstAttemptAt >= 15 * 60 * 1000) {
+        this.failedLoginAttempts.delete(emailKey);
+      }
+    }
+
+    const user = Array.from(this.dataStore.users.values()).find(
+      (u) => u.email.toLowerCase() === emailKey,
     );
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.recordFailedAttempt(emailKey);
+      throw new UnauthorizedException('Invalid email or password.');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedException('Invalid credentials');
+      this.recordFailedAttempt(emailKey);
+      throw new UnauthorizedException('Invalid email or password.');
     }
+
+    // Successful login: clear failed attempts
+    this.failedLoginAttempts.delete(emailKey);
 
     const tokens = await this.generateTokens(user);
     user.refreshToken = tokens.refreshToken;
+
     return {
+      message: 'Login successful.',
       user: this.sanitizeUser(user),
       tokens,
     };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const emailKey = dto.email.toLowerCase().trim();
+    const user = Array.from(this.dataStore.users.values()).find(
+      (u) => u.email.toLowerCase() === emailKey,
+    );
+
+    if (!user) {
+      return {
+        success: true,
+        message: 'If an account exists with that email address, password reset instructions have been sent.',
+      };
+    }
+
+    const rawResetToken = crypto.randomBytes(32).toString('hex');
+    user.passwordResetTokenHash = crypto
+      .createHash('sha256')
+      .update(rawResetToken)
+      .digest('hex');
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    const resetUrl = `http://localhost:3000/reset-password?token=${rawResetToken}`;
+
+    return {
+      success: true,
+      message: 'Password reset instructions have been dispatched.',
+      resetToken: rawResetToken,
+      resetUrl,
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (!dto.token || !dto.newPassword) {
+      throw new BadRequestException('Token and new password are required.');
+    }
+
+    if (dto.newPassword.length < 8) {
+      throw new BadRequestException('New password must be at least 8 characters long.');
+    }
+
+    const incomingHash = crypto.createHash('sha256').update(dto.token.trim()).digest('hex');
+    const user = Array.from(this.dataStore.users.values()).find(
+      (u) => u.passwordResetTokenHash === incomingHash,
+    );
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired password reset token.');
+    }
+
+    if (user.passwordResetExpires && new Date() > new Date(user.passwordResetExpires)) {
+      throw new BadRequestException('Password reset token has expired. Please request a new one.');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpires = null;
+    user.refreshToken = null; // Invalidate current session
+
+    this.logger.log(`[AUTH] Password successfully reset for user ${user.email}`);
+
+    return {
+      success: true,
+      message: 'Your password has been reset successfully. Please log in with your new password.',
+    };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = this.dataStore.users.get(userId);
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException('Current password does not match.');
+    }
+
+    if (dto.newPassword.length < 8) {
+      throw new BadRequestException('New password must be at least 8 characters long.');
+    }
+
+    user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    return {
+      success: true,
+      message: 'Password has been updated successfully.',
+    };
+  }
+
+  async logout(userId: string) {
+    const user = this.dataStore.users.get(userId);
+    if (user) {
+      user.refreshToken = undefined;
+    }
+    return { success: true, message: 'Logged out successfully.' };
+  }
+
+  async logoutAll(userId: string) {
+    const user = this.dataStore.users.get(userId);
+    if (user) {
+      user.refreshToken = undefined;
+    }
+    return { success: true, message: 'All active sessions have been invalidated.' };
   }
 
   async refreshToken(token: string) {
@@ -130,8 +429,29 @@ export class AuthService {
     };
   }
 
+  private recordFailedAttempt(email: string) {
+    const now = Date.now();
+    const existing = this.failedLoginAttempts.get(email);
+    if (!existing) {
+      this.failedLoginAttempts.set(email, {
+        count: 1,
+        firstAttemptAt: now,
+        lastAttemptAt: now,
+      });
+    } else {
+      existing.count += 1;
+      existing.lastAttemptAt = now;
+    }
+  }
+
   private async generateTokens(user: UserEntity) {
-    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      isVerified: user.isVerified ?? false,
+    };
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET || 'skillora_super_secret_access_key_2026',
       expiresIn: '24h',
@@ -144,7 +464,8 @@ export class AuthService {
   }
 
   private sanitizeUser(user: UserEntity) {
-    const { passwordHash, refreshToken, ...safe } = user;
+    const { passwordHash, refreshToken, verificationTokenHash, passwordResetTokenHash, ...safe } =
+      user;
     return safe;
   }
 }
