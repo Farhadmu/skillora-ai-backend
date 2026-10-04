@@ -1,9 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataStoreService } from '../../database/data-store.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class EducatorService {
-  constructor(private readonly dataStore: DataStoreService) {}
+  constructor(
+    private readonly dataStore: DataStoreService,
+    private readonly aiService: AiService,
+  ) {}
 
   getCohortOverview() {
     const learners = Array.from(this.dataStore.profiles.values());
@@ -38,6 +42,76 @@ export class EducatorService {
         { id: 'mod-3', title: 'Module 3: Containerization & Cloud Deployment Verification', completionRate: 65 },
         { id: 'mod-4', title: 'Module 4: Enterprise Mock Interviews & Placement Readiness', completionRate: 48 },
       ],
+    };
+  }
+
+  /**
+   * AI-Assisted Assessment Generator
+   */
+  async generateQuiz(params: {
+    topic: string;
+    category?: string;
+    difficulty?: 'Beginner' | 'Intermediate' | 'Advanced';
+    questionCount?: number;
+    publishDirectly?: boolean;
+  }) {
+    const assessment = await this.aiService.generateAssessmentQuiz(params);
+
+    if (params.publishDirectly) {
+      this.dataStore.assessments.set(assessment.id, assessment as any);
+    }
+
+    return {
+      success: true,
+      assessment,
+      isPublished: !!params.publishDirectly,
+      message: params.publishDirectly
+        ? `Assessment "${assessment.title}" published directly to student catalog!`
+        : `Assessment generated for educator review.`,
+    };
+  }
+
+  /**
+   * Dispatch Socratic Intervention
+   */
+  dispatchIntervention(learnerId: string, interventionNote: string, actionType: string = 'Socratic Practice Lab') {
+    const profile = this.dataStore.profiles.get(learnerId);
+    if (!profile) {
+      throw new NotFoundException(`Learner ${learnerId} not found`);
+    }
+
+    // Append to learner evidence / tasks
+    profile.skills.forEach((s) => {
+      if (s.proficiency < 70) {
+        s.evidence.push(`Educator Intervention Assigned: ${actionType} - "${interventionNote}"`);
+      }
+    });
+    this.dataStore.profiles.set(learnerId, profile);
+
+    return {
+      success: true,
+      learnerId,
+      learnerName: profile.name,
+      actionType,
+      interventionNote,
+      dispatchedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Create New Cohort
+   */
+  createCohort(data: { name: string; targetRole: string; description: string; durationWeeks?: number }) {
+    const cohortId = `coh-${Date.now()}`;
+    return {
+      success: true,
+      cohortId,
+      name: data.name,
+      targetRole: data.targetRole,
+      description: data.description,
+      durationWeeks: data.durationWeeks || 8,
+      enrolledCount: 0,
+      createdAt: new Date().toISOString(),
     };
   }
 }

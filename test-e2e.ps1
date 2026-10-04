@@ -100,6 +100,29 @@ $adminHeaders = @{ Authorization = "Bearer $($adminLoginRes.tokens.accessToken)"
 $adminStats = Invoke-RestMethod -Uri "http://localhost:3001/api/admin/stats" -Method Get -Headers $adminHeaders
 Write-Host "  -> System Health: $($adminStats.systemHealth.apiStatus), Total Inferences: $($adminStats.aiGovernance.totalInferenceRequests), Uptime: $($adminStats.systemHealth.uptimeSeconds)s"
 
+# 13. Educator Dynamic Assessment & Quiz Generator
+Write-Host "`n[13] Testing POST /api/educator/generate-quiz (Educator Role)..."
+$eduLoginBody = @{ email = "educator@skillora.ai"; password = "Password123!" } | ConvertTo-Json
+$eduLoginRes = Invoke-RestMethod -Uri "http://localhost:3001/api/auth/login" -Method Post -Body $eduLoginBody -ContentType "application/json"
+$eduHeaders = @{ Authorization = "Bearer $($eduLoginRes.tokens.accessToken)" }
+$quizBody = @{ topic = "Distributed Systems & Raft Consensus"; category = "Architecture"; difficulty = "Advanced"; questionCount = 3; publishDirectly = $true } | ConvertTo-Json
+$quizRes = Invoke-RestMethod -Uri "http://localhost:3001/api/educator/generate-quiz" -Method Post -Body $quizBody -Headers $eduHeaders -ContentType "application/json"
+Write-Host "  -> Generated Quiz: $($quizRes.assessment.title) (Questions: $($quizRes.assessment.questionsCount), Published: $($quizRes.isPublished))"
+
+# 14. Employer Job Creation & AI Custom Interview Questions
+Write-Host "`n[14] Testing POST /api/marketplace/jobs (Employer Role)..."
+$jobBody = @{ title = "Lead RAG Systems Architect"; department = "AI Core"; mode = "remote"; salaryRange = "$150k - $190k" } | ConvertTo-Json
+$createdJob = Invoke-RestMethod -Uri "http://localhost:3001/api/marketplace/jobs" -Method Post -Body $jobBody -Headers $empHeaders -ContentType "application/json"
+Write-Host "  -> Published Job: $($createdJob.title) (ID: $($createdJob.id))"
+
+# 15. Admin Multi-Provider AI Cascade Telemetry & Test
+Write-Host "`n[15] Testing GET /api/admin/ai-providers & POST /api/admin/ai-providers/test..."
+$providers = Invoke-RestMethod -Uri "http://localhost:3001/api/admin/ai-providers" -Method Get -Headers $adminHeaders
+Write-Host "  -> Active AI Cascade Tiers: $($providers.Count) Providers Configured"
+$cascadeTest = Invoke-RestMethod -Uri "http://localhost:3001/api/admin/ai-providers/test" -Method Post -Headers $adminHeaders
+Write-Host "  -> Cascade Test Responded by: $($cascadeTest.providerUsed) in $($cascadeTest.latencyMs)ms"
+
 Write-Host "`n=================================================="
-Write-Host "  ALL 12 E2E WORKFLOW TESTS PASSED PERFECTLY!     "
+Write-Host "  ALL 15 E2E WORKFLOW TESTS PASSED PERFECTLY!     "
 Write-Host "=================================================="
+

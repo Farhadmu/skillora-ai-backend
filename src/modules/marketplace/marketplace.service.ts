@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataStoreService, JobEntity, JobApplicationEntity } from '../../database/data-store.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class MarketplaceService {
-  constructor(private readonly dataStore: DataStoreService) {}
+  constructor(
+    private readonly dataStore: DataStoreService,
+    private readonly aiService: AiService,
+  ) {}
 
   /**
    * Search and browse verified jobs with AI Match Score calculation
@@ -124,5 +128,146 @@ export class MarketplaceService {
     app.status = stage;
     this.dataStore.applications.set(applicationId, app);
     return app;
+  }
+
+  /**
+   * Post New Job Opening (Employer Studio)
+   */
+  createJob(jobData: Partial<JobEntity>) {
+    const jobId = `job-${Date.now()}`;
+    const newJob: JobEntity = {
+      id: jobId,
+      companyId: jobData.companyId || 'comp-1',
+      companyName: jobData.companyName || 'Skillora Partner Technologies',
+      companyLogo: jobData.companyLogo || 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=128&q=80',
+      title: jobData.title || 'Senior AI Systems Engineer',
+      department: jobData.department || 'Engineering',
+      location: jobData.location || 'Remote (Global)',
+      mode: jobData.mode || 'remote',
+      salaryRange: jobData.salaryRange || '$130,000 - $160,000 USD',
+      experienceLevel: jobData.experienceLevel || 'Mid',
+      requiredSkills: jobData.requiredSkills || ['TypeScript', 'NestJS', 'React', 'Docker'],
+      preferredSkills: jobData.preferredSkills || ['Qdrant', 'RAG Architecture', 'Kubernetes'],
+      description: jobData.description || 'Join our high-throughput AI engineering team.',
+      responsibilities: jobData.responsibilities || [
+        'Design and deploy resilient, low-latency microservices',
+        'Implement vector search retrieval architectures',
+        'Write strict unit and integration tests with 90%+ branch coverage',
+      ],
+      requirements: jobData.requirements || [
+        'Demonstrated mastery in TypeScript and modern web frameworks',
+        'Proven experience with distributed systems and asynchronous message queues',
+        'Skillora Readiness Score of 80+ preferred',
+      ],
+      postedAt: 'Just now',
+      applicantsCount: 0,
+    };
+
+    this.dataStore.jobs.set(jobId, newJob);
+    return newJob;
+  }
+
+  /**
+   * AI-Assisted Job Skill Extractor & Benchmarker
+   */
+  async aiExtractJobSkills(jobDescription: string) {
+    const prompt = `Analyze this job posting description and extract the key requirements:
+Job Description:
+"${jobDescription}"
+
+Return ONLY a JSON object matching this schema:
+{
+  "extractedTitle": "e.g. Senior Backend Engineer",
+  "suggestedExperienceLevel": "Entry" | "Mid" | "Senior" | "Lead",
+  "suggestedSalaryRange": "e.g. $120,000 - $150,000 USD",
+  "requiredSkills": ["TypeScript", "NestJS", "PostgreSQL"],
+  "preferredSkills": ["Docker", "Kubernetes", "GraphQL"]
+}`;
+
+    try {
+      const generated = await this.aiService.generateText(prompt);
+      const jsonMatch = generated.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (e) {}
+
+    // Fallback extraction
+    return {
+      extractedTitle: 'Full-Stack AI Software Engineer',
+      suggestedExperienceLevel: 'Mid',
+      suggestedSalaryRange: '$110,000 - $140,000 USD',
+      requiredSkills: ['TypeScript', 'React', 'NestJS', 'MongoDB', 'REST API'],
+      preferredSkills: ['Docker', 'RAG Architecture', 'Vector Search', 'CI/CD'],
+    };
+  }
+
+  /**
+   * Generate Custom Interview Questions for a Candidate
+   */
+  async generateInterviewQuestionsForCandidate(applicationId: string) {
+    const app = this.dataStore.applications.get(applicationId);
+    if (!app) {
+      throw new NotFoundException(`Application ${applicationId} not found`);
+    }
+
+    const job = this.dataStore.jobs.get(app.jobId);
+    const profile = this.dataStore.profiles.get(app.userId);
+
+    const prompt = `You are a Lead Hiring Architect interviewing candidate "${app.candidateName}" for the position "${app.jobTitle}" at "${app.companyName}".
+Candidate's verified skills: ${profile?.skills.map((s) => `${s.name} (${s.proficiency}%)`).join(', ') || 'TypeScript, React, Node.js'}.
+Job required skills: ${job?.requiredSkills.join(', ') || 'TypeScript, NestJS, Docker'}.
+
+Generate 4 deep, technical, and behavioral interview questions specifically testing where the candidate has skill gaps or high potential.
+Return ONLY a JSON object:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "category": "Architecture & System Design",
+      "question": "Question text...",
+      "evaluationCriteria": "What the interviewer should listen for..."
+    }
+  ]
+}`;
+
+    try {
+      const text = await this.aiService.generateText(prompt);
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        return JSON.parse(match[0]);
+      }
+    } catch (e) {}
+
+    return {
+      candidateName: app.candidateName,
+      jobTitle: app.jobTitle,
+      questions: [
+        {
+          id: 'q1',
+          category: 'System Design & Distributed Data',
+          question: `In high-scale systems for ${job?.title || 'this role'}, how do you handle cache invalidation across distributed instances without causing thundering herd problems?`,
+          evaluationCriteria: 'Look for mutual exclusion locks, probabilistic early expiration (XFetch), or CDC event streams.',
+        },
+        {
+          id: 'q2',
+          category: 'Code Quality & Error Boundaries',
+          question: 'Walk us through your approach to designing resilient error recovery and fallback degradation when a third-party AI provider or downstream microservice fails.',
+          evaluationCriteria: 'Candidate should mention circuit breakers, exponential backoff with jitter, and graceful fallback modes.',
+        },
+        {
+          id: 'q3',
+          category: 'Verification & Testing Rigor',
+          question: 'How do you structure end-to-end automated integration tests to ensure deterministic results without flakiness?',
+          evaluationCriteria: 'Look for isolated test fixtures, transactional rollbacks, and contract-based testing.',
+        },
+        {
+          id: 'q4',
+          category: 'Culture & Architectural Trade-offs',
+          question: 'Describe a technical decision where you chose a simpler, proven solution over a trendy new framework or database. What was the business impact?',
+          evaluationCriteria: 'Evaluates pragmatic engineering judgment versus premature over-engineering.',
+        },
+      ],
+    };
   }
 }

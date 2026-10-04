@@ -62,4 +62,31 @@ export class MarketplaceController {
   updateStage(@Param('id') id: string, @Body('stage') stage: any) {
     return this.marketplaceService.updateApplicationStage(id, stage);
   }
+
+  @Post('jobs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Post new verified job opening to the talent marketplace' })
+  createJob(@Body() jobData: any) {
+    return this.marketplaceService.createJob(jobData);
+  }
+
+  @Post('jobs/ai-extract')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'AI extractor for job description to standardized skills and tier' })
+  aiExtractJobSkills(@Body('description') description: string) {
+    return this.marketplaceService.aiExtractJobSkills(description);
+  }
+
+  @Post('candidates/:id/interview-questions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate custom candidate-specific interview questions based on skill gaps' })
+  generateInterviewQuestions(@Param('id') applicationId: string) {
+    return this.marketplaceService.generateInterviewQuestionsForCandidate(applicationId);
+  }
 }

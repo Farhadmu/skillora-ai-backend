@@ -21,6 +21,14 @@ export class AssessmentsController {
     return this.assessmentsService.getAssessmentById(id);
   }
 
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Register a new verified assessment in the catalog' })
+  create(@Body() body: any) {
+    return this.assessmentsService.createAssessment(body);
+  }
+
   @Post(':id/submit')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

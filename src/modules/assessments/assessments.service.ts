@@ -30,6 +30,23 @@ export class AssessmentsService {
     return assessment;
   }
 
+  createAssessment(data: Partial<AssessmentEntity>) {
+    const id = data.id || `asm-custom-${Date.now()}`;
+    const newAssessment: AssessmentEntity = {
+      id,
+      title: data.title || 'Custom Verified Technical Assessment',
+      category: data.category || 'Engineering',
+      skillName: data.skillName || 'Software Architecture',
+      difficulty: data.difficulty || 'Intermediate',
+      durationMinutes: data.durationMinutes || 15,
+      passingScore: data.passingScore || 75,
+      questionsCount: data.questions?.length || 0,
+      questions: data.questions || [],
+    };
+    this.dataStore.assessments.set(id, newAssessment);
+    return newAssessment;
+  }
+
   /**
    * Submit and evaluate assessment answers
    */
