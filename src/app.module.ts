@@ -16,6 +16,8 @@ import { EducatorModule } from './modules/educator/educator.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SearchModule } from './modules/search/search.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -37,5 +39,7 @@ import { SearchModule } from './modules/search/search.module';
     AnalyticsModule,
     SearchModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
