@@ -17,6 +17,6 @@ yarn-error.log*
 .env.production
 !.env.example
 
-# OS files
-.DS_Store
-Thumbs.db
+# build info
+*.tsbuildinfo
+
