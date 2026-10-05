@@ -26,6 +26,19 @@ This repository houses the core NestJS backend engine powering **Skillora AI**:
 
 ---
 
+## 📚 Complete Engineering & Architecture Specifications
+
+Detailed architecture and design specifications are maintained in the [`docs/`](./docs) directory:
+- 🏛️ **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)**: High-level system architecture, C4 diagrams, and the 11-step end-to-end intelligence cascade.
+- 🗄️ **[DATABASE.md](./docs/DATABASE.md)**: Dual-mode persistence layer, catalog of all 39 domain entities across 13 Mongoose schemas, text search and indexing strategies, and atomic disk durability.
+- 🔌 **[API.md](./docs/API.md)**: RESTful API contracts, OpenAPI / Swagger specifications, response/error envelopes.
+- 🧠 **[AI_ARCHITECTURE.md](./docs/AI_ARCHITECTURE.md)**: The 8-tier multi-provider AI fallback cascade, specialized domain engines (Socratic Tutor with Bloom's taxonomy & Web Speech Audio, JD Intelligence, Code Review, Mock Interviews).
+- 🔍 **[RAG.md](./docs/RAG.md)**: Document ingestion, overlap-aware chunking, vector storage (Qdrant & in-memory cosine index), grounded citation badges, and anti-hallucination guardrails.
+- 🛡️ **[SECURITY.md](./docs/SECURITY.md)**: Token rotation, SHA-256 token hashing, RBAC + anti-IDOR `ResourceOwnerGuard`, public admin registration block, and `EmailService` abstraction.
+- 🚀 **[DEPLOYMENT.md](./docs/DEPLOYMENT.md)**: Multi-stage Dockerfiles, Docker Compose orchestrations, and cloud deployment guides.
+
+---
+
 ## Installation & Setup
 
 1. **Install dependencies**:
