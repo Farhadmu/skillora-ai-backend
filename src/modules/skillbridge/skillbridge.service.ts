@@ -47,12 +47,18 @@ export class SkillBridgeService {
       createdAt: new Date().toISOString(),
     };
 
-    this.dataStore.roadmaps.set(roadmapId, newRoadmap);
+    this.dataStore.saveRoadmap(newRoadmap);
     if (profile) {
       profile.activeRoadmapId = roadmapId;
       profile.targetRole = targetRole;
-      this.dataStore.profiles.set(userId, profile);
+      this.dataStore.saveProfile(profile);
     }
+
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'roadmap_generated',
+      userId,
+      metadata: { targetRole, durationDays, milestoneCount: newRoadmap.milestones.length },
+    });
 
     return newRoadmap;
   }
@@ -64,12 +70,26 @@ export class SkillBridgeService {
     }
 
     if (roadmap.milestones[milestoneIndex]) {
-      roadmap.milestones[milestoneIndex].completed = !roadmap.milestones[milestoneIndex].completed;
+      const wasCompleted = roadmap.milestones[milestoneIndex].completed;
+      roadmap.milestones[milestoneIndex].completed = !wasCompleted;
       
       const completedCount = roadmap.milestones.filter((m) => m.completed).length;
       roadmap.progressPercent = Math.round((completedCount / roadmap.milestones.length) * 100);
 
-      this.dataStore.roadmaps.set(roadmapId, roadmap);
+      this.dataStore.saveRoadmap(roadmap);
+
+      if (!wasCompleted) {
+        this.dataStore.logAnalyticsEvent({
+          eventName: 'roadmap_milestone_completed',
+          userId,
+          metadata: {
+            roadmapId,
+            milestoneIndex,
+            milestoneTitle: roadmap.milestones[milestoneIndex].title,
+            progressPercent: roadmap.progressPercent,
+          },
+        });
+      }
     }
 
     return roadmap;

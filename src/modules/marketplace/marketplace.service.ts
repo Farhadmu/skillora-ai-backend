@@ -102,9 +102,23 @@ export class MarketplaceService {
       notes: `Applied with verified readiness score of ${profile?.readinessScore || 75}/100.`,
     };
 
-    this.dataStore.applications.set(appId, newApp);
+    this.dataStore.saveApplication(newApp);
     job.applicantsCount++;
-    this.dataStore.jobs.set(jobId, job);
+    this.dataStore.saveJob(job);
+
+    this.dataStore.recordNotification({
+      userId,
+      title: `Application Submitted: ${job.title}`,
+      message: `Your application to ${job.companyName} for ${job.title} was submitted with a match score of ${matchScore}%.`,
+      type: 'application',
+      link: '/learner/jobs/applications',
+    });
+
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'job_applied',
+      userId,
+      metadata: { jobId, jobTitle: job.title, companyName: job.companyName, matchScore },
+    });
 
     return newApp;
   }
@@ -126,7 +140,22 @@ export class MarketplaceService {
       throw new NotFoundException(`Application ${applicationId} not found`);
     }
     app.status = stage;
-    this.dataStore.applications.set(applicationId, app);
+    this.dataStore.saveApplication(app);
+
+    this.dataStore.recordNotification({
+      userId: app.userId,
+      title: `Application Status Updated: ${stage.toUpperCase()}`,
+      message: `${app.companyName} moved your application for ${app.jobTitle} to "${stage}".`,
+      type: 'application',
+      link: '/learner/jobs/applications',
+    });
+
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'application_status_changed',
+      userId: app.userId,
+      metadata: { applicationId, stage, jobTitle: app.jobTitle, companyName: app.companyName },
+    });
+
     return app;
   }
 
@@ -163,7 +192,13 @@ export class MarketplaceService {
       applicantsCount: 0,
     };
 
-    this.dataStore.jobs.set(jobId, newJob);
+    this.dataStore.saveJob(newJob);
+
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'job_created',
+      metadata: { jobId, title: newJob.title, companyName: newJob.companyName },
+    });
+
     return newJob;
   }
 

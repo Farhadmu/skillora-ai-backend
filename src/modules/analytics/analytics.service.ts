@@ -7,6 +7,22 @@ export class AnalyticsService {
 
   getLearnerAnalytics(userId: string) {
     const profile = this.dataStore.profiles.get(userId);
+    const userAttempts = Array.from(this.dataStore.assessmentAttempts.values()).filter(
+      (a) => a.userId === userId,
+    );
+
+    const assessmentTrend = userAttempts.length > 0
+      ? userAttempts.slice(-5).map((a) => ({
+          test: a.skillName || a.assessmentTitle,
+          score: a.score,
+        }))
+      : [
+          { test: 'JS Fundamentals', score: 85 },
+          { test: 'React Internals', score: 88 },
+          { test: 'TypeScript Enterprise', score: 92 },
+          { test: 'NestJS Dependency Injection', score: 86 },
+          { test: 'RAG & Vector Retrieval', score: 84 },
+        ];
 
     return {
       readinessTrajectory: [
@@ -32,26 +48,29 @@ export class AnalyticsService {
         confidence: s.confidence,
         verified: s.verified,
       })) || [],
-      assessmentScoreTrend: [
-        { test: 'JS Fundamentals', score: 85 },
-        { test: 'React Internals', score: 88 },
-        { test: 'TypeScript Enterprise', score: 92 },
-        { test: 'NestJS Dependency Injection', score: 86 },
-        { test: 'RAG & Vector Retrieval', score: 84 },
-      ],
+      assessmentScoreTrend: assessmentTrend,
     };
   }
 
   getEmployerFunnel(companyId?: string) {
+    const apps = Array.from(this.dataStore.applications.values());
+    const applied = apps.length || 142;
+    const screening = apps.filter((a) => a.status === 'screening' || a.status === 'reviewing').length || 86;
+    const shortlisted = apps.filter((a) => a.status === 'shortlisted').length || 42;
+    const interview = apps.filter((a) => a.status === 'interview' || a.status === 'interviewing').length || 28;
+    const final = apps.filter((a) => a.status === 'final').length || 14;
+    const offered = apps.filter((a) => a.status === 'offered').length || 8;
+    const hired = apps.filter((a) => a.status === 'hired').length || 6;
+
     return {
       funnel: [
-        { stage: 'Matched Candidates', count: 142 },
-        { stage: 'Profile Screened', count: 86 },
-        { stage: 'Technical Assessment', count: 42 },
-        { stage: 'AI Mock Interview Passed', count: 28 },
-        { stage: 'Final Engineering Interview', count: 14 },
-        { stage: 'Offers Extended', count: 8 },
-        { stage: 'Hired', count: 6 },
+        { stage: 'Applied Candidates', count: applied },
+        { stage: 'Profile Screened', count: screening },
+        { stage: 'Shortlisted', count: shortlisted },
+        { stage: 'Technical & AI Interview', count: interview },
+        { stage: 'Final Interview', count: final },
+        { stage: 'Offers Extended', count: offered },
+        { stage: 'Hired', count: hired },
       ],
       averageTimeToHireDays: 14,
       retentionProbability: '94%',

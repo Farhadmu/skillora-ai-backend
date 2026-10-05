@@ -59,6 +59,7 @@ export class EducatorService {
 
     if (params.publishDirectly) {
       this.dataStore.assessments.set(assessment.id, assessment as any);
+      this.dataStore.persistToDisk();
     }
 
     return {
@@ -86,7 +87,15 @@ export class EducatorService {
         s.evidence.push(`Educator Intervention Assigned: ${actionType} - "${interventionNote}"`);
       }
     });
-    this.dataStore.profiles.set(learnerId, profile);
+    this.dataStore.saveProfile(profile);
+
+    this.dataStore.recordNotification({
+      userId: learnerId,
+      title: `Educator Assigned Intervention: ${actionType}`,
+      message: interventionNote,
+      type: 'educator',
+      link: '/learner/learning/ai-teacher',
+    });
 
     return {
       success: true,

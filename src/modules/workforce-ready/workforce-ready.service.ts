@@ -45,7 +45,7 @@ export class WorkforceReadyService {
     );
 
     profile.readinessScore = overall;
-    this.dataStore.profiles.set(userId, profile);
+    this.dataStore.saveProfile(profile);
 
     return {
       overallScore: overall,
@@ -93,7 +93,34 @@ export class WorkforceReadyService {
           (profile.readinessDimensions.interview + result.finalEvaluation.overallScore) / 2,
         );
       }
-      this.dataStore.profiles.set(params.userId, profile);
+      this.dataStore.saveProfile(profile);
+
+      this.dataStore.recordSkillEvidence({
+        userId: params.userId,
+        skillId: 'mock-interview',
+        skillName: `${params.mode.toUpperCase()} Mock Interview`,
+        evidenceType: 'INTERVIEW',
+        title: `AI Mock Interview (${result.finalEvaluation.overallScore}%)`,
+        score: result.finalEvaluation.overallScore,
+        verified: true,
+      });
+
+      this.dataStore.recordNotification({
+        userId: params.userId,
+        title: 'Mock Interview Completed',
+        message: `Your ${params.mode} interview simulation scored ${result.finalEvaluation.overallScore}%. Interview readiness updated!`,
+        type: 'interview',
+        link: '/learner/readiness',
+      });
+
+      this.dataStore.logAnalyticsEvent({
+        eventName: 'interview_completed',
+        userId: params.userId,
+        metadata: {
+          mode: params.mode,
+          score: result.finalEvaluation.overallScore,
+        },
+      });
     }
 
     return result;

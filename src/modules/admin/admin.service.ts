@@ -80,7 +80,15 @@ export class AdminService {
     }
 
     user.role = role;
-    this.dataStore.users.set(userId, user);
+    this.dataStore.saveUser(user);
+
+    this.dataStore.logAudit({
+      action: 'USER_ROLE_UPDATED',
+      resourceType: 'user',
+      resourceId: userId,
+      userRole: role,
+      details: { previousRole: user.role, newRole: role, targetUser: user.email },
+    });
 
     return {
       success: true,

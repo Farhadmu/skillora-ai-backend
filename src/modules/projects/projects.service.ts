@@ -52,9 +52,48 @@ export class ProjectsService {
   }
 
   /**
-   * AI Code Reviewer
+   * AI Code Reviewer with Skill Evidence Awarding
    */
-  async reviewCode(code: string, language: string, context?: string) {
-    return this.aiService.reviewCode(code, language || 'TypeScript', context);
+  async reviewCode(code: string, language: string, context?: string, userId?: string) {
+    const review = await this.aiService.reviewCode(code, language || 'TypeScript', context);
+    if (userId) {
+      this.dataStore.logAnalyticsEvent({
+        eventName: 'code_reviewed',
+        userId,
+        metadata: { language, score: review.score },
+      });
+
+      if (review.score >= 75) {
+        const profile = this.dataStore.profiles.get(userId);
+        if (profile) {
+          if (profile.readinessDimensions) {
+            profile.readinessDimensions.projects = Math.min(
+              Math.round(profile.readinessDimensions.projects * 0.9 + review.score * 0.1),
+              100,
+            );
+          }
+          this.dataStore.saveProfile(profile);
+
+          this.dataStore.recordSkillEvidence({
+            userId,
+            skillId: language.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            skillName: language,
+            evidenceType: 'CODE_REVIEW',
+            title: `AI Verified Code Review (${review.score}%)`,
+            score: review.score,
+            verified: true,
+          });
+
+          this.dataStore.recordNotification({
+            userId,
+            title: `Code Review Passed: ${language}`,
+            message: `Your code submission passed with a score of ${review.score}%. Project readiness increased!`,
+            type: 'skill_improvement',
+            link: '/learner/skills/evidence',
+          });
+        }
+      }
+    }
+    return review;
   }
 }

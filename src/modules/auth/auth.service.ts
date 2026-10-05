@@ -24,6 +24,8 @@ import {
 } from './dto/auth.dto';
 import { Role } from '../../common/enums/roles.enum';
 
+import { EmailService } from '../../common/services/email.service';
+
 interface RateLimitRecord {
   count: number;
   firstAttemptAt: number;
@@ -39,6 +41,7 @@ export class AuthService {
   constructor(
     private readonly dataStore: DataStoreService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -104,11 +107,11 @@ export class AuthService {
       jobTitle: dto.jobTitle?.trim(),
     };
 
-    this.dataStore.users.set(userId, newUser);
+    this.dataStore.saveUser(newUser);
 
     // 4. Initialize default learner profile if LEARNER
     if (role === Role.LEARNER) {
-      this.dataStore.profiles.set(userId, {
+      this.dataStore.saveProfile({
         userId,
         name: newUser.name,
         email: newUser.email,
@@ -139,16 +142,16 @@ export class AuthService {
     const tokens = await this.generateTokens(newUser);
     const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
 
+    const dispatch = await this.emailService.sendVerificationEmail(emailKey, verificationUrl);
+
     this.logger.log(
-      `[AUTH] New registration for ${emailKey} (${role}). Verification token generated: ${rawVerificationToken.slice(0, 8)}...`,
+      `[AUTH] New registration for ${emailKey} (${role}). Verification status: ${dispatch.dispatchNotice}`,
     );
 
     return {
-      message:
-        'Registration successful. A verification email has been dispatched. Please verify your email to unlock all features.',
+      message: dispatch.dispatchNotice,
       user: this.sanitizeUser(newUser),
       tokens,
-      verificationToken: rawVerificationToken,
       verificationUrl,
     };
   }
@@ -183,6 +186,8 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user);
     user.refreshToken = tokens.refreshToken;
+
+    this.dataStore.saveUser(user);
 
     this.logger.log(`[AUTH] Account successfully verified: ${user.email} (${user.role})`);
 
@@ -238,12 +243,14 @@ export class AuthService {
 
     this.resendRateLimits.set(emailKey, now);
 
+    this.dataStore.saveUser(user);
+
     const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
+    const dispatch = await this.emailService.sendVerificationEmail(emailKey, verificationUrl);
 
     return {
       success: true,
-      message: 'A fresh verification email has been dispatched.',
-      verificationToken: rawVerificationToken,
+      message: dispatch.dispatchNotice,
       verificationUrl,
     };
   }
@@ -285,6 +292,7 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user);
     user.refreshToken = tokens.refreshToken;
+    this.dataStore.saveUser(user);
 
     return {
       message: 'Login successful.',
@@ -313,12 +321,14 @@ export class AuthService {
       .digest('hex');
     user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
 
+    this.dataStore.saveUser(user);
+
     const resetUrl = `http://localhost:3000/reset-password?token=${rawResetToken}`;
+    const dispatch = await this.emailService.sendPasswordResetEmail(emailKey, resetUrl);
 
     return {
       success: true,
-      message: 'Password reset instructions have been dispatched.',
-      resetToken: rawResetToken,
+      message: dispatch.dispatchNotice,
       resetUrl,
     };
   }
@@ -350,6 +360,8 @@ export class AuthService {
     user.passwordResetExpires = null;
     user.refreshToken = null; // Invalidate current session
 
+    this.dataStore.saveUser(user);
+
     this.logger.log(`[AUTH] Password successfully reset for user ${user.email}`);
 
     return {
@@ -374,6 +386,8 @@ export class AuthService {
     }
 
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    this.dataStore.saveUser(user);
+
     return {
       success: true,
       message: 'Password has been updated successfully.',
@@ -384,6 +398,7 @@ export class AuthService {
     const user = this.dataStore.users.get(userId);
     if (user) {
       user.refreshToken = undefined;
+      this.dataStore.saveUser(user);
     }
     return { success: true, message: 'Logged out successfully.' };
   }
@@ -392,6 +407,7 @@ export class AuthService {
     const user = this.dataStore.users.get(userId);
     if (user) {
       user.refreshToken = undefined;
+      this.dataStore.saveUser(user);
     }
     return { success: true, message: 'All active sessions have been invalidated.' };
   }

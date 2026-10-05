@@ -30,14 +30,13 @@ export class ProjectsController {
   }
 
   @Post('review-code')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({ summary: 'Submit code snippet for automated AI code review and refactoring' })
   reviewCode(
     @Body('code') code: string,
     @Body('language') language: string,
     @Body('context') context?: string,
+    @CurrentUser() user?: any,
   ) {
-    return this.projectsService.reviewCode(code, language, context);
+    return this.projectsService.reviewCode(code, language, context, user?.id);
   }
 }

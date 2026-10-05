@@ -65,7 +65,12 @@ export class ProfileService {
     if (updated.githubUrl || updated.portfolioUrl) score += 10;
     updated.completenessScore = Math.min(score, 100);
 
-    this.dataStore.profiles.set(userId, updated);
+    this.dataStore.saveProfile(updated);
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'profile_updated',
+      userId,
+      metadata: { completenessScore: updated.completenessScore },
+    });
     return updated;
   }
 
@@ -108,7 +113,17 @@ export class ProfileService {
     // Recalculate completeness
     profile.completenessScore = Math.min(profile.completenessScore + 25, 95);
 
-    this.dataStore.profiles.set(userId, profile);
+    this.dataStore.saveProfile(profile);
+
+    this.dataStore.logAnalyticsEvent({
+      eventName: 'cv_uploaded',
+      userId,
+      metadata: {
+        extractedSkillsCount: extracted.extractedSkills.length,
+        completenessScore: profile.completenessScore,
+      },
+    });
+
     return {
       profile,
       extracted,

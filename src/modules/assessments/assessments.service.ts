@@ -104,8 +104,86 @@ export class AssessmentsService {
       }
 
       // Recompute readiness score
-      profile.readinessScore = Math.min(Math.round(profile.readinessScore * 0.9 + scorePercentage * 0.1), 100);
-      this.dataStore.profiles.set(userId, profile);
+      profile.readinessScore = Math.min(Math.round(profile.readinessScore * 0.85 + scorePercentage * 0.15), 100);
+      if (profile.readinessDimensions) {
+        profile.readinessDimensions.technical = Math.min(
+          Math.round(profile.readinessDimensions.technical * 0.9 + scorePercentage * 0.1),
+          100,
+        );
+      }
+      this.dataStore.saveProfile(profile);
+
+      // Record granular attempt in database
+      this.dataStore.recordAssessmentAttempt({
+        userId,
+        assessmentId,
+        assessmentTitle: assessment.title,
+        skillName: assessment.skillName,
+        score: scorePercentage,
+        passed,
+        totalQuestions,
+        correctAnswers: correctCount,
+        answers: questionFeedback,
+      });
+
+      // Record verified skill evidence if passed
+      if (passed) {
+        this.dataStore.recordSkillEvidence({
+          userId,
+          skillId: assessment.skillName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          skillName: assessment.skillName,
+          evidenceType: 'ASSESSMENT',
+          title: `Verified Assessment: ${assessment.title}`,
+          score: scorePercentage,
+          verified: true,
+        });
+
+        this.dataStore.recordNotification({
+          userId,
+          title: `Verified Skill Awarded: ${assessment.skillName}`,
+          message: `Congratulations! You scored ${scorePercentage}% on the ${assessment.title} assessment. Your employability score increased!`,
+          type: 'skill_improvement',
+          link: '/learner/skills/evidence',
+        });
+      }
+
+      // Check and advance matching active roadmap milestones
+      const userRoadmap = Array.from(this.dataStore.roadmaps.values()).find(
+        (r) => r.userId === userId,
+      );
+      if (userRoadmap) {
+        let roadmapUpdated = false;
+        for (const milestone of userRoadmap.milestones) {
+          if (
+            milestone.focusSkill.toLowerCase().includes(assessment.skillName.toLowerCase()) ||
+            milestone.assessmentTopic.toLowerCase().includes(assessment.skillName.toLowerCase())
+          ) {
+            if (passed && !milestone.completed) {
+              milestone.completed = true;
+              roadmapUpdated = true;
+            }
+          }
+        }
+        if (roadmapUpdated) {
+          const completedCount = userRoadmap.milestones.filter((m) => m.completed).length;
+          userRoadmap.progressPercent = Math.round(
+            (completedCount / userRoadmap.milestones.length) * 100,
+          );
+          this.dataStore.saveRoadmap(userRoadmap);
+        }
+      }
+
+      // Log real analytics event
+      this.dataStore.logAnalyticsEvent({
+        eventName: 'assessment_completed',
+        userId,
+        metadata: {
+          assessmentId,
+          skillName: assessment.skillName,
+          score: scorePercentage,
+          passed,
+        },
+      });
     }
 
     return {
