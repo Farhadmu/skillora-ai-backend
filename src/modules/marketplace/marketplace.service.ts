@@ -131,7 +131,18 @@ export class MarketplaceService {
    * Employer Pipeline Management
    */
   getEmployerCandidates(companyId?: string) {
-    return Array.from(this.dataStore.applications.values());
+    return Array.from(this.dataStore.applications.values()).map((app) => {
+      const user = this.dataStore.users.get(app.userId);
+      const profile = this.dataStore.profiles.get(app.userId);
+      return {
+        ...app,
+        candidateEmail: user?.email || profile?.email,
+        email: user?.email || profile?.email,
+        candidateName: profile?.name || user?.name || app.candidateName,
+        targetRole: profile?.targetRole,
+        readinessScore: profile?.readinessScore,
+      };
+    });
   }
 
   updateApplicationStage(applicationId: string, stage: JobApplicationEntity['status']) {

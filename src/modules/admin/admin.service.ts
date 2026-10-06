@@ -101,4 +101,34 @@ export class AdminService {
       },
     };
   }
+
+  updateUserStatus(userId: string, status: string) {
+    const user = this.dataStore.users.get(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    (user as any).status = status;
+    this.dataStore.saveUser(user);
+
+    this.dataStore.logAudit({
+      action: 'USER_STATUS_UPDATED',
+      resourceType: 'user',
+      resourceId: userId,
+      details: { newStatus: status, targetUser: user.email },
+    });
+
+    return {
+      success: true,
+      message: `User ${user.email} status updated to ${status}`,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: (user as any).status,
+      },
+    };
+  }
 }
+

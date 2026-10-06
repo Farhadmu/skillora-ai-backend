@@ -11,7 +11,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItbGVhcm5lci0xIiwiZW1haWwiOiJsZWFybmVyQHNraWxsb3JhLmFpIiwicm9sZSI6IkxFQVJORVIiLCJuYW1lIjoiRmFyaGFkdWwgSXNsYW0iLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyNTA0NTgsImV4cCI6MTc5MTg1NTI1OH0.ryUwoQNVAVR2atzgebeqphEqZI24gU22skcjqmDa4B8"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItbGVhcm5lci0xIiwiZW1haWwiOiJsZWFybmVyQHNraWxsb3JhLmFpIiwicm9sZSI6IkxFQVJORVIiLCJuYW1lIjoiRmFyaGFkdWwgSXNsYW0iLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyODgwNDQsImV4cCI6MTc5MTg5Mjg0NH0.5thNP93aEK65c-MuPXG9BW9XKmvOdow5JIRiXqE9DNw"
       }
     ],
     [
@@ -91,7 +91,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZW1wbG95ZXItMSIsImVtYWlsIjoiZW1wbG95ZXJAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRU1QTE9ZRVIiLCJuYW1lIjoiRWxlbmEgUm9zdG92YSAoVGVjaFNjYWxlIEFJKSIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI1MDU0MiwiZXhwIjoxNzkxODU1MzQyfQ.jZwrqULzr9pTV7v20UOwjwO3-l4mVY3sMNfZTV6_DhU"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZW1wbG95ZXItMSIsImVtYWlsIjoiZW1wbG95ZXJAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRU1QTE9ZRVIiLCJuYW1lIjoiRWxlbmEgUm9zdG92YSAoVGVjaFNjYWxlIEFJKSIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI5MjQwMiwiZXhwIjoxNzkxODk3MjAyfQ.-Obyc57ES7Nq4lrdinUdF42pp3IYrdbLFTLnsSL3WJ0"
       }
     ],
     [
@@ -119,6 +119,57 @@
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
         "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItYWRtaW4tMSIsImVtYWlsIjoiYWRtaW5Ac2tpbGxvcmEuYWkiLCJyb2xlIjoiQURNSU4iLCJuYW1lIjoiU2tpbGxvcmEgU3VwZXJBZG1pbiIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI0NzY3NSwiZXhwIjoxNzkxODUyNDc1fQ.86zPOKEiA_wERdimum6bxDcVWUVQ3Q6ywlWg8Ow96Iw"
+      }
+    ],
+    [
+      "usr-1791291798406",
+      {
+        "id": "usr-1791291798406",
+        "email": "test_learner_1791291798148@skillora.ai",
+        "passwordHash": "$2b$10$C5mTjg7CGPgRidTgRdFBYOk88KfA0SEkTlm5w4WzHIrJWS4dbsI0G",
+        "name": "Test Engineer 1791291798148",
+        "role": "LEARNER",
+        "headline": "Skillora AI Learner",
+        "createdAt": "2026-10-06T13:03:18.407Z",
+        "isVerified": true,
+        "verificationTokenHash": null,
+        "verificationTokenExpires": null,
+        "careerInterest": "Full-Stack AI Systems Engineer",
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMTc5MTI5MTc5ODQwNiIsImVtYWlsIjoidGVzdF9sZWFybmVyXzE3OTEyOTE3OTgxNDhAc2tpbGxvcmEuYWkiLCJyb2xlIjoiTEVBUk5FUiIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIDE3OTEyOTE3OTgxNDgiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyOTE3OTgsImV4cCI6MTc5MTg5NjU5OH0.xSXqjiitc3pbJf6oank_SEj_5-xLnp30vrXFTuBlICM"
+      }
+    ],
+    [
+      "usr-1791292028504",
+      {
+        "id": "usr-1791292028504",
+        "email": "test_learner_1791292028330@skillora.ai",
+        "passwordHash": "$2b$10$ZeFO83AQKL43u51mtL/N0.vgWQWewxyxD31Jq5PVRmPhzN11iw.z2",
+        "name": "Test Engineer 1791292028330",
+        "role": "LEARNER",
+        "headline": "Skillora AI Learner",
+        "createdAt": "2026-10-06T13:07:08.504Z",
+        "isVerified": true,
+        "verificationTokenHash": null,
+        "verificationTokenExpires": null,
+        "careerInterest": "Full-Stack AI Systems Engineer",
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMTc5MTI5MjAyODUwNCIsImVtYWlsIjoidGVzdF9sZWFybmVyXzE3OTEyOTIwMjgzMzBAc2tpbGxvcmEuYWkiLCJyb2xlIjoiTEVBUk5FUiIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIDE3OTEyOTIwMjgzMzAiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyOTIwMjgsImV4cCI6MTc5MTg5NjgyOH0.NtSMjKQCCj_c3EPQkpL2-TtV2yx9CWDsCTzBvi77Jjs"
+      }
+    ],
+    [
+      "usr-1791292102766",
+      {
+        "id": "usr-1791292102766",
+        "email": "test_learner_1791292102595@skillora.ai",
+        "passwordHash": "$2b$10$Zl1thR5T/YBQQtqvnpxAjeefkRdG9ieGBXgbdafz8OylHgy4WT2ru",
+        "name": "Test Engineer 1791292102595",
+        "role": "LEARNER",
+        "headline": "Skillora AI Learner",
+        "createdAt": "2026-10-06T13:08:22.766Z",
+        "isVerified": true,
+        "verificationTokenHash": null,
+        "verificationTokenExpires": null,
+        "careerInterest": "Full-Stack AI Systems Engineer",
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMTc5MTI5MjEwMjc2NiIsImVtYWlsIjoidGVzdF9sZWFybmVyXzE3OTEyOTIxMDI1OTVAc2tpbGxvcmEuYWkiLCJyb2xlIjoiTEVBUk5FUiIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIDE3OTEyOTIxMDI1OTUiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyOTI0MDIsImV4cCI6MTc5MTg5NzIwMn0.fLT9PV8bR_CT9ciVLneUYCItFX8xbPlkVPbgMHWmsRQ"
       }
     ]
   ],
@@ -287,6 +338,241 @@
           }
         ]
       }
+    ],
+    [
+      "usr-1791291798406",
+      {
+        "userId": "usr-1791291798406",
+        "name": "Test Engineer 1791291798148",
+        "email": "test_learner_1791291798148@skillora.ai",
+        "headline": "Senior Full-Stack AI Engineer",
+        "bio": "Welcome to my Skillora AI verified workforce intelligence profile.",
+        "degree": "",
+        "institution": "",
+        "graduationYear": "2025",
+        "targetRole": "Staff AI Systems Architect",
+        "targetCompanies": [],
+        "preferredMode": "remote",
+        "weeklyHours": 15,
+        "readinessScore": 57,
+        "completenessScore": 75,
+        "skills": [
+          {
+            "name": "TypeScript",
+            "proficiency": 92,
+            "verified": true,
+            "evidence": [
+              "Exam 92%"
+            ]
+          },
+          {
+            "name": "NestJS",
+            "proficiency": 88,
+            "verified": true,
+            "evidence": [
+              "GitHub clean repo"
+            ]
+          },
+          {
+            "name": "MongoDB",
+            "proficiency": 85,
+            "verified": true,
+            "evidence": [
+              "Index optimization"
+            ]
+          }
+        ],
+        "readinessDimensions": {
+          "technical": 54,
+          "problemSolving": 60,
+          "projects": 55,
+          "communication": 65,
+          "interview": 50,
+          "roleAlignment": 60,
+          "practical": 55
+        },
+        "activeRoadmapId": "rdm-1791291798724"
+      }
+    ],
+    [
+      "usr-1791292028504",
+      {
+        "userId": "usr-1791292028504",
+        "name": "Test Engineer 1791292028330",
+        "email": "test_learner_1791292028330@skillora.ai",
+        "headline": "Senior Full-Stack AI Engineer",
+        "bio": "Welcome to my Skillora AI verified workforce intelligence profile.",
+        "degree": "",
+        "institution": "",
+        "graduationYear": "2025",
+        "targetRole": "Staff AI Systems Architect",
+        "targetCompanies": [],
+        "preferredMode": "remote",
+        "weeklyHours": 15,
+        "readinessScore": 57,
+        "completenessScore": 75,
+        "skills": [
+          {
+            "name": "TypeScript",
+            "proficiency": 92,
+            "verified": true,
+            "evidence": [
+              "Exam 92%",
+              "Project: Autonomous RAG Knowledge Assistant"
+            ]
+          },
+          {
+            "name": "NestJS",
+            "proficiency": 88,
+            "verified": true,
+            "evidence": [
+              "GitHub clean repo",
+              "Project: Autonomous RAG Knowledge Assistant"
+            ]
+          },
+          {
+            "name": "MongoDB",
+            "proficiency": 85,
+            "verified": true,
+            "evidence": [
+              "Index optimization"
+            ]
+          },
+          {
+            "name": "RAG",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          },
+          {
+            "name": "Gemini AI",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          },
+          {
+            "name": "Qdrant",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          }
+        ],
+        "readinessDimensions": {
+          "technical": 54,
+          "problemSolving": 60,
+          "projects": 60,
+          "communication": 65,
+          "interview": 50,
+          "roleAlignment": 60,
+          "practical": 55
+        },
+        "activeRoadmapId": "rdm-1791292028736"
+      }
+    ],
+    [
+      "usr-1791292102766",
+      {
+        "userId": "usr-1791292102766",
+        "name": "Test Engineer 1791292102595",
+        "email": "test_learner_1791292102595@skillora.ai",
+        "headline": "Senior Full-Stack AI Engineer",
+        "bio": "Welcome to my Skillora AI verified workforce intelligence profile.",
+        "degree": "",
+        "institution": "",
+        "graduationYear": "2025",
+        "targetRole": "Staff AI Systems Architect",
+        "targetCompanies": [],
+        "preferredMode": "remote",
+        "weeklyHours": 15,
+        "readinessScore": 57,
+        "completenessScore": 75,
+        "skills": [
+          {
+            "name": "TypeScript",
+            "proficiency": 92,
+            "verified": true,
+            "evidence": [
+              "Exam 92%",
+              "Project: Autonomous RAG Knowledge Assistant"
+            ]
+          },
+          {
+            "name": "NestJS",
+            "proficiency": 88,
+            "verified": true,
+            "evidence": [
+              "GitHub clean repo",
+              "Project: Autonomous RAG Knowledge Assistant"
+            ]
+          },
+          {
+            "name": "MongoDB",
+            "proficiency": 85,
+            "verified": true,
+            "evidence": [
+              "Index optimization"
+            ]
+          },
+          {
+            "name": "RAG",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          },
+          {
+            "name": "Gemini AI",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          },
+          {
+            "name": "Qdrant",
+            "category": "AI/ML & Backend",
+            "proficiency": 80,
+            "confidence": 80,
+            "verified": true,
+            "evidence": [
+              "Project: Autonomous RAG Knowledge Assistant"
+            ],
+            "source": "PROJECT-VERIFIED"
+          }
+        ],
+        "readinessDimensions": {
+          "technical": 54,
+          "problemSolving": 60,
+          "projects": 60,
+          "communication": 65,
+          "interview": 50,
+          "roleAlignment": 60,
+          "practical": 55
+        },
+        "activeRoadmapId": "rdm-1791292102946"
+      }
     ]
   ],
   "jobs": [
@@ -328,7 +614,7 @@
           "Excellent communication skills and eagerness to continuously learn new technologies."
         ],
         "postedAt": "2026-10-05",
-        "applicantsCount": 18
+        "applicantsCount": 21
       }
     ],
     [
@@ -1047,6 +1333,195 @@
         ],
         "createdAt": "2026-10-05T18:32:58.077Z"
       }
+    ],
+    [
+      "rdm-1791291798724",
+      {
+        "id": "rdm-1791291798724",
+        "userId": "usr-1791291798406",
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "progressPercent": 33,
+        "summary": "A high-impact 30-day personalized trajectory engineered to bridge your gap toward verified Staff AI Systems Architect employability.",
+        "milestones": [
+          {
+            "dayRange": "Day 1 - 7",
+            "title": "Foundations & Architectural Rigor",
+            "focusSkill": "Advanced TypeScript & Clean Architecture",
+            "completed": true,
+            "learningObjectives": [
+              "Master strict typing, generics, and conditional type mapping",
+              "Understand Dependency Injection, Modules, and Clean Layering"
+            ],
+            "tasks": [
+              "Refactor generic service layer into repository pattern",
+              "Implement centralized validation pipes with class-validator"
+            ],
+            "projectPrompt": "Build an authenticated telemetry ingestion gateway with rate limiting",
+            "assessmentTopic": "TypeScript & Enterprise Backend Patterns"
+          },
+          {
+            "dayRange": "Day 8 - 21",
+            "title": "AI Native Systems & Retrieval-Augmented Generation",
+            "focusSkill": "Gemini & Groq Vector Retrieval",
+            "completed": false,
+            "learningObjectives": [
+              "Chunk documents with semantic preservation",
+              "Connect vector stores with hybrid BM25 and cosine distance",
+              "Implement grounded answer generation with verifiable citations"
+            ],
+            "tasks": [
+              "Create RAG vector indexing pipeline",
+              "Evaluate hallucinations using citation verification"
+            ],
+            "projectPrompt": "Develop a Multi-Tenant Knowledge Assistant with Qdrant indexing",
+            "assessmentTopic": "Vector Embeddings, RAG & LLM Guardrails"
+          },
+          {
+            "dayRange": "Day 22 - 30",
+            "title": "Production Readiness, Observability & Verification",
+            "focusSkill": "Dockerization, CI/CD & Portfolio Proof",
+            "completed": false,
+            "learningObjectives": [
+              "Docker multi-stage builds and security scanning",
+              "Readiness scoring and mock interview mastery"
+            ],
+            "tasks": [
+              "Publish verified project demo to talent marketplace",
+              "Complete AI Mock Technical & System Design Interviews"
+            ],
+            "projectPrompt": "Deploy full-stack Skillora AI node with structured logging",
+            "assessmentTopic": "Full-Stack System Design & Production Deployment"
+          }
+        ],
+        "createdAt": "2026-10-06T13:03:18.724Z"
+      }
+    ],
+    [
+      "rdm-1791292028736",
+      {
+        "id": "rdm-1791292028736",
+        "userId": "usr-1791292028504",
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "progressPercent": 33,
+        "summary": "A high-impact 30-day personalized trajectory engineered to bridge your gap toward verified Staff AI Systems Architect employability.",
+        "milestones": [
+          {
+            "dayRange": "Day 1 - 7",
+            "title": "Foundations & Architectural Rigor",
+            "focusSkill": "Advanced TypeScript & Clean Architecture",
+            "completed": true,
+            "learningObjectives": [
+              "Master strict typing, generics, and conditional type mapping",
+              "Understand Dependency Injection, Modules, and Clean Layering"
+            ],
+            "tasks": [
+              "Refactor generic service layer into repository pattern",
+              "Implement centralized validation pipes with class-validator"
+            ],
+            "projectPrompt": "Build an authenticated telemetry ingestion gateway with rate limiting",
+            "assessmentTopic": "TypeScript & Enterprise Backend Patterns"
+          },
+          {
+            "dayRange": "Day 8 - 21",
+            "title": "AI Native Systems & Retrieval-Augmented Generation",
+            "focusSkill": "Gemini & Groq Vector Retrieval",
+            "completed": false,
+            "learningObjectives": [
+              "Chunk documents with semantic preservation",
+              "Connect vector stores with hybrid BM25 and cosine distance",
+              "Implement grounded answer generation with verifiable citations"
+            ],
+            "tasks": [
+              "Create RAG vector indexing pipeline",
+              "Evaluate hallucinations using citation verification"
+            ],
+            "projectPrompt": "Develop a Multi-Tenant Knowledge Assistant with Qdrant indexing",
+            "assessmentTopic": "Vector Embeddings, RAG & LLM Guardrails"
+          },
+          {
+            "dayRange": "Day 22 - 30",
+            "title": "Production Readiness, Observability & Verification",
+            "focusSkill": "Dockerization, CI/CD & Portfolio Proof",
+            "completed": false,
+            "learningObjectives": [
+              "Docker multi-stage builds and security scanning",
+              "Readiness scoring and mock interview mastery"
+            ],
+            "tasks": [
+              "Publish verified project demo to talent marketplace",
+              "Complete AI Mock Technical & System Design Interviews"
+            ],
+            "projectPrompt": "Deploy full-stack Skillora AI node with structured logging",
+            "assessmentTopic": "Full-Stack System Design & Production Deployment"
+          }
+        ],
+        "createdAt": "2026-10-06T13:07:08.736Z"
+      }
+    ],
+    [
+      "rdm-1791292102946",
+      {
+        "id": "rdm-1791292102946",
+        "userId": "usr-1791292102766",
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "progressPercent": 33,
+        "summary": "A high-impact 30-day personalized trajectory engineered to bridge your gap toward verified Staff AI Systems Architect employability.",
+        "milestones": [
+          {
+            "dayRange": "Day 1 - 7",
+            "title": "Foundations & Architectural Rigor",
+            "focusSkill": "Advanced TypeScript & Clean Architecture",
+            "completed": true,
+            "learningObjectives": [
+              "Master strict typing, generics, and conditional type mapping",
+              "Understand Dependency Injection, Modules, and Clean Layering"
+            ],
+            "tasks": [
+              "Refactor generic service layer into repository pattern",
+              "Implement centralized validation pipes with class-validator"
+            ],
+            "projectPrompt": "Build an authenticated telemetry ingestion gateway with rate limiting",
+            "assessmentTopic": "TypeScript & Enterprise Backend Patterns"
+          },
+          {
+            "dayRange": "Day 8 - 21",
+            "title": "AI Native Systems & Retrieval-Augmented Generation",
+            "focusSkill": "Gemini & Groq Vector Retrieval",
+            "completed": false,
+            "learningObjectives": [
+              "Chunk documents with semantic preservation",
+              "Connect vector stores with hybrid BM25 and cosine distance",
+              "Implement grounded answer generation with verifiable citations"
+            ],
+            "tasks": [
+              "Create RAG vector indexing pipeline",
+              "Evaluate hallucinations using citation verification"
+            ],
+            "projectPrompt": "Develop a Multi-Tenant Knowledge Assistant with Qdrant indexing",
+            "assessmentTopic": "Vector Embeddings, RAG & LLM Guardrails"
+          },
+          {
+            "dayRange": "Day 22 - 30",
+            "title": "Production Readiness, Observability & Verification",
+            "focusSkill": "Dockerization, CI/CD & Portfolio Proof",
+            "completed": false,
+            "learningObjectives": [
+              "Docker multi-stage builds and security scanning",
+              "Readiness scoring and mock interview mastery"
+            ],
+            "tasks": [
+              "Publish verified project demo to talent marketplace",
+              "Complete AI Mock Technical & System Design Interviews"
+            ],
+            "projectPrompt": "Deploy full-stack Skillora AI node with structured logging",
+            "assessmentTopic": "Full-Stack System Design & Production Deployment"
+          }
+        ],
+        "createdAt": "2026-10-06T13:08:22.946Z"
+      }
     ]
   ],
   "applications": [
@@ -1064,11 +1539,373 @@
         "appliedAt": "2026-10-02",
         "notes": "Strong alignment on NestJS, Next.js, and Gemini RAG workflows. Readiness score: 84/100."
       }
+    ],
+    [
+      "app-1791291798755",
+      {
+        "id": "app-1791291798755",
+        "jobId": "job-1",
+        "userId": "usr-1791291798406",
+        "candidateName": "Test Engineer 1791291798148",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 60,
+        "status": "applied",
+        "appliedAt": "2026-10-06",
+        "notes": "Applied with verified readiness score of 57/100."
+      }
+    ],
+    [
+      "app-1791292028753",
+      {
+        "id": "app-1791292028753",
+        "jobId": "job-1",
+        "userId": "usr-1791292028504",
+        "candidateName": "Test Engineer 1791292028330",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 87,
+        "status": "applied",
+        "appliedAt": "2026-10-06",
+        "notes": "Applied with verified readiness score of 57/100."
+      }
+    ],
+    [
+      "app-1791292102962",
+      {
+        "id": "app-1791292102962",
+        "jobId": "job-1",
+        "userId": "usr-1791292102766",
+        "candidateName": "Test Engineer 1791292102595",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 87,
+        "status": "applied",
+        "appliedAt": "2026-10-06",
+        "notes": "Applied with verified readiness score of 57/100."
+      }
     ]
   ],
-  "assessmentAttempts": [],
-  "skillEvidences": [],
-  "notifications": [],
+  "assessmentAttempts": [
+    [
+      "att-1791291798744-dqti",
+      {
+        "id": "att-1791291798744-dqti",
+        "userId": "usr-1791291798406",
+        "assessmentId": "asm-1",
+        "assessmentTitle": "Advanced TypeScript & Enterprise Architecture",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false,
+        "totalQuestions": 3,
+        "correctAnswers": 0,
+        "answers": [
+          {
+            "questionId": "q1",
+            "prompt": "In TypeScript, what is the exact difference between type and interface when designing extensible open models?",
+            "correctAnswer": 0,
+            "isCorrect": false,
+            "explanation": "TypeScript interfaces are open and support declaration merging, making them ideal for library API contracts and public schemas."
+          },
+          {
+            "questionId": "q2",
+            "prompt": "How does the \"satisfies\" operator introduced in TypeScript 4.9 improve on type assertions (as Type)?",
+            "correctAnswer": 1,
+            "isCorrect": false,
+            "explanation": "The satisfies operator verifies type conformity while preserving specific literal member types and autocompletion."
+          },
+          {
+            "questionId": "q3",
+            "prompt": "Write a generic TypeScript type \"DeepReadonly<T>\" that recursively marks all properties of object T as readonly.",
+            "correctAnswer": "DeepReadonly",
+            "isCorrect": false,
+            "explanation": "Recursive mapped types traverse nested dictionary structures to apply readonly immutability at every level."
+          }
+        ],
+        "recordedAt": "2026-10-06T13:03:18.744Z"
+      }
+    ],
+    [
+      "att-1791292028746-kkiq",
+      {
+        "id": "att-1791292028746-kkiq",
+        "userId": "usr-1791292028504",
+        "assessmentId": "asm-1",
+        "assessmentTitle": "Advanced TypeScript & Enterprise Architecture",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false,
+        "totalQuestions": 3,
+        "correctAnswers": 0,
+        "answers": [
+          {
+            "questionId": "q1",
+            "prompt": "In TypeScript, what is the exact difference between type and interface when designing extensible open models?",
+            "correctAnswer": 0,
+            "isCorrect": false,
+            "explanation": "TypeScript interfaces are open and support declaration merging, making them ideal for library API contracts and public schemas."
+          },
+          {
+            "questionId": "q2",
+            "prompt": "How does the \"satisfies\" operator introduced in TypeScript 4.9 improve on type assertions (as Type)?",
+            "correctAnswer": 1,
+            "isCorrect": false,
+            "explanation": "The satisfies operator verifies type conformity while preserving specific literal member types and autocompletion."
+          },
+          {
+            "questionId": "q3",
+            "prompt": "Write a generic TypeScript type \"DeepReadonly<T>\" that recursively marks all properties of object T as readonly.",
+            "correctAnswer": "DeepReadonly",
+            "isCorrect": false,
+            "explanation": "Recursive mapped types traverse nested dictionary structures to apply readonly immutability at every level."
+          }
+        ],
+        "recordedAt": "2026-10-06T13:07:08.746Z"
+      }
+    ],
+    [
+      "att-1791292102956-czel",
+      {
+        "id": "att-1791292102956-czel",
+        "userId": "usr-1791292102766",
+        "assessmentId": "asm-1",
+        "assessmentTitle": "Advanced TypeScript & Enterprise Architecture",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false,
+        "totalQuestions": 3,
+        "correctAnswers": 0,
+        "answers": [
+          {
+            "questionId": "q1",
+            "prompt": "In TypeScript, what is the exact difference between type and interface when designing extensible open models?",
+            "correctAnswer": 0,
+            "isCorrect": false,
+            "explanation": "TypeScript interfaces are open and support declaration merging, making them ideal for library API contracts and public schemas."
+          },
+          {
+            "questionId": "q2",
+            "prompt": "How does the \"satisfies\" operator introduced in TypeScript 4.9 improve on type assertions (as Type)?",
+            "correctAnswer": 1,
+            "isCorrect": false,
+            "explanation": "The satisfies operator verifies type conformity while preserving specific literal member types and autocompletion."
+          },
+          {
+            "questionId": "q3",
+            "prompt": "Write a generic TypeScript type \"DeepReadonly<T>\" that recursively marks all properties of object T as readonly.",
+            "correctAnswer": "DeepReadonly",
+            "isCorrect": false,
+            "explanation": "Recursive mapped types traverse nested dictionary structures to apply readonly immutability at every level."
+          }
+        ],
+        "recordedAt": "2026-10-06T13:08:22.956Z"
+      }
+    ]
+  ],
+  "skillEvidences": [
+    [
+      "evi-1791292028742-pxaw",
+      {
+        "id": "evi-1791292028742-pxaw",
+        "userId": "usr-1791292028504",
+        "skillId": "rag",
+        "skillName": "RAG",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "evi-1791292028742-5r3i",
+      {
+        "id": "evi-1791292028742-5r3i",
+        "userId": "usr-1791292028504",
+        "skillId": "gemini-ai",
+        "skillName": "Gemini AI",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "evi-1791292028742-auoz",
+      {
+        "id": "evi-1791292028742-auoz",
+        "userId": "usr-1791292028504",
+        "skillId": "qdrant",
+        "skillName": "Qdrant",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "evi-1791292028742-ack8",
+      {
+        "id": "evi-1791292028742-ack8",
+        "userId": "usr-1791292028504",
+        "skillId": "nestjs",
+        "skillName": "NestJS",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "evi-1791292028742-dbps",
+      {
+        "id": "evi-1791292028742-dbps",
+        "userId": "usr-1791292028504",
+        "skillId": "typescript",
+        "skillName": "TypeScript",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "evi-1791292102953-p8iu",
+      {
+        "id": "evi-1791292102953-p8iu",
+        "userId": "usr-1791292102766",
+        "skillId": "rag",
+        "skillName": "RAG",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ],
+    [
+      "evi-1791292102953-f95o",
+      {
+        "id": "evi-1791292102953-f95o",
+        "userId": "usr-1791292102766",
+        "skillId": "gemini-ai",
+        "skillName": "Gemini AI",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ],
+    [
+      "evi-1791292102953-ws81",
+      {
+        "id": "evi-1791292102953-ws81",
+        "userId": "usr-1791292102766",
+        "skillId": "qdrant",
+        "skillName": "Qdrant",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ],
+    [
+      "evi-1791292102953-ssq8",
+      {
+        "id": "evi-1791292102953-ssq8",
+        "userId": "usr-1791292102766",
+        "skillId": "nestjs",
+        "skillName": "NestJS",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ],
+    [
+      "evi-1791292102953-735c",
+      {
+        "id": "evi-1791292102953-735c",
+        "userId": "usr-1791292102766",
+        "skillId": "typescript",
+        "skillName": "TypeScript",
+        "evidenceType": "PROJECT",
+        "title": "Completed Project: Autonomous RAG Knowledge Assistant",
+        "score": 90,
+        "verified": true,
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ]
+  ],
+  "notifications": [
+    [
+      "notif-1791291798756-92oa",
+      {
+        "id": "notif-1791291798756-92oa",
+        "userId": "usr-1791291798406",
+        "title": "Application Submitted: Full-Stack AI Systems Engineer",
+        "message": "Your application to TechScale AI for Full-Stack AI Systems Engineer was submitted with a match score of 60%.",
+        "type": "application",
+        "link": "/learner/jobs/applications",
+        "createdAt": "2026-10-06T13:03:18.756Z"
+      }
+    ],
+    [
+      "notif-1791292028742-9hjs",
+      {
+        "id": "notif-1791292028742-9hjs",
+        "userId": "usr-1791292028504",
+        "title": "Project Verified: Autonomous RAG Knowledge Assistant",
+        "message": "Your project submission has been verified! Skills and evidence updated.",
+        "type": "skill_improvement",
+        "link": "/learner/skills/evidence",
+        "createdAt": "2026-10-06T13:07:08.742Z"
+      }
+    ],
+    [
+      "notif-1791292028753-0ibi",
+      {
+        "id": "notif-1791292028753-0ibi",
+        "userId": "usr-1791292028504",
+        "title": "Application Submitted: Full-Stack AI Systems Engineer",
+        "message": "Your application to TechScale AI for Full-Stack AI Systems Engineer was submitted with a match score of 87%.",
+        "type": "application",
+        "link": "/learner/jobs/applications",
+        "createdAt": "2026-10-06T13:07:08.753Z"
+      }
+    ],
+    [
+      "notif-1791292102953-j529",
+      {
+        "id": "notif-1791292102953-j529",
+        "userId": "usr-1791292102766",
+        "title": "Project Verified: Autonomous RAG Knowledge Assistant",
+        "message": "Your project submission has been verified! Skills and evidence updated.",
+        "type": "skill_improvement",
+        "link": "/learner/skills/evidence",
+        "createdAt": "2026-10-06T13:08:22.953Z"
+      }
+    ],
+    [
+      "notif-1791292102963-gb5q",
+      {
+        "id": "notif-1791292102963-gb5q",
+        "userId": "usr-1791292102766",
+        "title": "Application Submitted: Full-Stack AI Systems Engineer",
+        "message": "Your application to TechScale AI for Full-Stack AI Systems Engineer was submitted with a match score of 87%.",
+        "type": "application",
+        "link": "/learner/jobs/applications",
+        "createdAt": "2026-10-06T13:08:22.963Z"
+      }
+    ]
+  ],
   "analyticsEvents": [
     {
       "eventName": "job_created",
@@ -1078,9 +1915,159 @@
         "companyName": "Skillora Partner Technologies"
       },
       "timestamp": "2026-10-05T18:57:13.666Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-1791291798406",
+      "metadata": {
+        "completenessScore": 75
+      },
+      "timestamp": "2026-10-06T13:03:18.639Z"
+    },
+    {
+      "eventName": "roadmap_generated",
+      "userId": "usr-1791291798406",
+      "metadata": {
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "milestoneCount": 3
+      },
+      "timestamp": "2026-10-06T13:03:18.724Z"
+    },
+    {
+      "eventName": "roadmap_milestone_completed",
+      "userId": "usr-1791291798406",
+      "metadata": {
+        "milestoneIndex": 0,
+        "milestoneTitle": "Foundations & Architectural Rigor",
+        "progressPercent": 33
+      },
+      "timestamp": "2026-10-06T13:03:18.732Z"
+    },
+    {
+      "eventName": "assessment_completed",
+      "userId": "usr-1791291798406",
+      "metadata": {
+        "assessmentId": "asm-1",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false
+      },
+      "timestamp": "2026-10-06T13:03:18.744Z"
+    },
+    {
+      "eventName": "job_applied",
+      "userId": "usr-1791291798406",
+      "metadata": {
+        "jobId": "job-1",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 60
+      },
+      "timestamp": "2026-10-06T13:03:18.756Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-1791292028504",
+      "metadata": {
+        "completenessScore": 75
+      },
+      "timestamp": "2026-10-06T13:07:08.729Z"
+    },
+    {
+      "eventName": "roadmap_generated",
+      "userId": "usr-1791292028504",
+      "metadata": {
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "milestoneCount": 3
+      },
+      "timestamp": "2026-10-06T13:07:08.736Z"
+    },
+    {
+      "eventName": "roadmap_milestone_completed",
+      "userId": "usr-1791292028504",
+      "metadata": {
+        "milestoneIndex": 0,
+        "milestoneTitle": "Foundations & Architectural Rigor",
+        "progressPercent": 33
+      },
+      "timestamp": "2026-10-06T13:07:08.739Z"
+    },
+    {
+      "eventName": "assessment_completed",
+      "userId": "usr-1791292028504",
+      "metadata": {
+        "assessmentId": "asm-1",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false
+      },
+      "timestamp": "2026-10-06T13:07:08.746Z"
+    },
+    {
+      "eventName": "job_applied",
+      "userId": "usr-1791292028504",
+      "metadata": {
+        "jobId": "job-1",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 87
+      },
+      "timestamp": "2026-10-06T13:07:08.753Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-1791292102766",
+      "metadata": {
+        "completenessScore": 75
+      },
+      "timestamp": "2026-10-06T13:08:22.940Z"
+    },
+    {
+      "eventName": "roadmap_generated",
+      "userId": "usr-1791292102766",
+      "metadata": {
+        "targetRole": "Staff AI Systems Architect",
+        "durationDays": 30,
+        "milestoneCount": 3
+      },
+      "timestamp": "2026-10-06T13:08:22.946Z"
+    },
+    {
+      "eventName": "roadmap_milestone_completed",
+      "userId": "usr-1791292102766",
+      "metadata": {
+        "milestoneIndex": 0,
+        "milestoneTitle": "Foundations & Architectural Rigor",
+        "progressPercent": 33
+      },
+      "timestamp": "2026-10-06T13:08:22.949Z"
+    },
+    {
+      "eventName": "assessment_completed",
+      "userId": "usr-1791292102766",
+      "metadata": {
+        "assessmentId": "asm-1",
+        "skillName": "TypeScript",
+        "score": 0,
+        "passed": false
+      },
+      "timestamp": "2026-10-06T13:08:22.956Z"
+    },
+    {
+      "eventName": "job_applied",
+      "userId": "usr-1791292102766",
+      "metadata": {
+        "jobId": "job-1",
+        "jobTitle": "Full-Stack AI Systems Engineer",
+        "companyName": "TechScale AI",
+        "matchScore": 87
+      },
+      "timestamp": "2026-10-06T13:08:22.963Z"
     }
   ],
   "aiUsages": [],
   "auditLogs": [],
-  "savedAt": "2026-10-06T01:35:42.658Z"
+  "savedAt": "2026-10-06T13:13:22.680Z"
 }

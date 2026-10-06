@@ -39,4 +39,16 @@ export class ProjectsController {
   ) {
     return this.projectsService.reviewCode(code, language, context, user?.id);
   }
+
+  @Post(':id/submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit completed project repo and demo to verify skills' })
+  submitProject(
+    @CurrentUser() user: any,
+    @Param('id') projectId: string,
+    @Body() dto: { githubRepoUrl: string; liveDemoUrl?: string; notes?: string },
+  ) {
+    return this.projectsService.submitProject(user.id, projectId, dto);
+  }
 }

@@ -23,11 +23,30 @@ export class AiController {
     @Body('pageContext') pageContext?: string,
   ) {
     const profile = this.dataStore.profiles.get(user.id);
-    const contextSummary = profile
-      ? `User: ${profile.name}, Target Role: ${profile.targetRole}, Readiness Score: ${profile.readinessScore}/100, Verified Skills: ${profile.skills.filter((s) => s.verified).map((s) => s.name).join(', ')}, Current Page: ${pageContext || 'Dashboard'}`
-      : `User: ${user.name}, Role: ${user.role}, Page: ${pageContext || 'Dashboard'}`;
+    const activeRoadmap = Array.from(this.dataStore.roadmaps.values()).find(
+      (r) => r.userId === user.id || r.id === user.id,
+    );
 
-    const prompt = `Context: ${contextSummary}\n\nLearner Query: "${query}"\n\nProvide a concise, direct, and actionable answer tailored to their exact career stage and skills.`;
+    let extraContext = '';
+    if (pageContext?.includes('roadmap') && activeRoadmap) {
+      extraContext = ` Active Roadmap: ${activeRoadmap.durationDays} days (${activeRoadmap.progressPercent}% completed). Current milestones: ${activeRoadmap.milestones?.map((m: any) => `${m.title} [${m.completed ? 'Done' : 'Pending'}]`).join(', ')}.`;
+    } else if (pageContext?.includes('gap') || pageContext?.includes('career')) {
+      extraContext = ` Target Role: ${profile?.targetRole || 'Full-Stack AI Systems Engineer'}. Verified user skills: ${profile?.skills?.map((s) => `${s.name} (${s.proficiency}%)`).join(', ')}.`;
+    } else if (pageContext?.includes('job')) {
+      const allJobs = Array.from(this.dataStore.jobs.values()).slice(0, 3);
+      extraContext = ` Top marketplace roles: ${allJobs.map((j) => `${j.title} at ${j.companyName} requiring ${j.requiredSkills.slice(0, 3).join(', ')}`).join('; ')}.`;
+    }
+
+    const contextSummary = profile
+      ? `User: ${profile.name}, Target Role: ${profile.targetRole}, Readiness Score: ${profile.readinessScore}/100, Verified Skills: ${profile.skills.filter((s) => s.verified).map((s) => s.name).join(', ')}, Current Page: ${pageContext || 'Dashboard'}.${extraContext}`
+      : `User: ${user.name}, Role: ${user.role}, Page: ${pageContext || 'Dashboard'}.${extraContext}`;
+
+    const prompt = `You are Skillora AI, an intelligent career copilot.
+Context: ${contextSummary}
+
+Learner Question: "${query}"
+
+Provide a concise, direct, personalized, and actionable answer tailored to their exact career stage, skills, and current page.`;
     const answer = await this.aiService.generateText(prompt);
 
     return {

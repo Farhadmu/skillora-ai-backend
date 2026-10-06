@@ -64,8 +64,11 @@ export class SkillBridgeService {
   }
 
   async toggleMilestone(userId: string, roadmapId: string, milestoneIndex: number) {
-    const roadmap = this.dataStore.roadmaps.get(roadmapId);
+    let roadmap = roadmapId ? this.dataStore.roadmaps.get(roadmapId) : null;
     if (!roadmap || roadmap.userId !== userId) {
+      roadmap = Array.from(this.dataStore.roadmaps.values()).find((r) => r.userId === userId) || null;
+    }
+    if (!roadmap) {
       throw new NotFoundException('Roadmap not found for user');
     }
 

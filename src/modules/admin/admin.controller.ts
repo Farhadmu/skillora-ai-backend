@@ -55,4 +55,13 @@ export class AdminController {
   updateUserRole(@Param('id') id: string, @Body('role') role: Role) {
     return this.adminService.updateUserRole(id, role);
   }
+
+  @Patch('users/:id/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user active/suspended state' })
+  updateUserStatus(@Param('id') id: string, @Body('status') status: string) {
+    return this.adminService.updateUserStatus(id, status);
+  }
 }

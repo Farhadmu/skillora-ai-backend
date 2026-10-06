@@ -17,6 +17,25 @@ import {
   SEED_APPLICATION,
 } from './seed-data';
 
+import {
+  UserSchema,
+  ProfileSchema,
+  CompanySchema,
+  JobSchema,
+  SkillSchema,
+  AssessmentSchema,
+  CourseSchema,
+  ProjectSchema,
+  RoadmapSchema,
+  JobApplicationSchema,
+  AssessmentAttemptSchema,
+  SkillEvidenceSchema,
+  NotificationSchema,
+  AnalyticsEventSchema,
+  AIUsageSchema,
+  AuditLogSchema,
+} from './schemas';
+
 export interface UserEntity {
   id: string;
   email: string;
@@ -237,7 +256,25 @@ export class DataStoreService implements OnModuleInit {
   public aiUsages: any[] = [];
   public auditLogs: any[] = [];
 
+  // Mongoose Connection & Active Models
   private mongoConnection: Connection | null = null;
+  public userModel: any = null;
+  public profileModel: any = null;
+  public jobModel: any = null;
+  public companyModel: any = null;
+  public skillModel: any = null;
+  public assessmentModel: any = null;
+  public courseModel: any = null;
+  public projectModel: any = null;
+  public roadmapModel: any = null;
+  public applicationModel: any = null;
+  public attemptModel: any = null;
+  public evidenceModel: any = null;
+  public notificationModel: any = null;
+  public analyticsModel: any = null;
+  public aiUsageModel: any = null;
+  public auditModel: any = null;
+
   private saveDebounceTimer: NodeJS.Timeout | null = null;
 
   async onModuleInit() {
@@ -248,6 +285,10 @@ export class DataStoreService implements OnModuleInit {
     if (!loadedFromDisk) {
       await this.seedInitialData();
       this.persistToDisk();
+    }
+
+    if (this.mongoConnection) {
+      await this.syncToAndFromMongo();
     }
 
     this.logger.log(
@@ -274,10 +315,69 @@ export class DataStoreService implements OnModuleInit {
         connectTimeoutMS: 2000,
       }).asPromise();
       this.logger.log(`[MongoDB] Successfully connected to live MongoDB instance at ${uri}`);
+      this.initMongoModels();
     } catch (err: any) {
       this.logger.warn(
         `[MongoDB] MongoDB at ${uri} is not reachable. Operating with high-performance persistent durability layer at ${this.persistenceFilePath}. All data is preserved across server restarts.`,
       );
+    }
+  }
+
+  private initMongoModels() {
+    if (!this.mongoConnection) return;
+    try {
+      this.userModel = this.mongoConnection.model('User', UserSchema);
+      this.profileModel = this.mongoConnection.model('Profile', ProfileSchema);
+      this.companyModel = this.mongoConnection.model('Company', CompanySchema);
+      this.jobModel = this.mongoConnection.model('Job', JobSchema);
+      this.skillModel = this.mongoConnection.model('Skill', SkillSchema);
+      this.assessmentModel = this.mongoConnection.model('Assessment', AssessmentSchema);
+      this.courseModel = this.mongoConnection.model('Course', CourseSchema);
+      this.projectModel = this.mongoConnection.model('Project', ProjectSchema);
+      this.roadmapModel = this.mongoConnection.model('Roadmap', RoadmapSchema);
+      this.applicationModel = this.mongoConnection.model('JobApplication', JobApplicationSchema);
+      this.attemptModel = this.mongoConnection.model('AssessmentAttempt', AssessmentAttemptSchema);
+      this.evidenceModel = this.mongoConnection.model('SkillEvidence', SkillEvidenceSchema);
+      this.notificationModel = this.mongoConnection.model('Notification', NotificationSchema);
+      this.analyticsModel = this.mongoConnection.model('AnalyticsEvent', AnalyticsEventSchema);
+      this.aiUsageModel = this.mongoConnection.model('AIUsage', AIUsageSchema);
+      this.auditModel = this.mongoConnection.model('AuditLog', AuditLogSchema);
+    } catch (e: any) {
+      this.logger.warn(`Could not compile Mongoose models: ${e.message}`);
+    }
+  }
+
+  private async syncToAndFromMongo() {
+    if (!this.userModel) return;
+    try {
+      const dbUsersCount = await this.userModel.countDocuments();
+      if (dbUsersCount > 0) {
+        const users = await this.userModel.find().lean();
+        for (const u of users) this.users.set(u.id || (u as any)._id?.toString(), u as any);
+        const profiles = await this.profileModel.find().lean();
+        for (const p of profiles) this.profiles.set(p.userId, p as any);
+        const jobs = await this.jobModel.find().lean();
+        for (const j of jobs) this.jobs.set(j.id, j as any);
+        const apps = await this.applicationModel.find().lean();
+        for (const a of apps) this.applications.set(a.id, a as any);
+        const roadmaps = await this.roadmapModel.find().lean();
+        for (const r of roadmaps) this.roadmaps.set(r.id, r as any);
+        this.logger.log(`[MongoDB] Hydrated ${users.length} users and collections from MongoDB.`);
+      } else {
+        // Seed MongoDB from existing local store
+        for (const u of Array.from(this.users.values())) {
+          await this.userModel.updateOne({ email: u.email }, { $set: u }, { upsert: true });
+        }
+        for (const p of Array.from(this.profiles.values())) {
+          await this.profileModel.updateOne({ userId: p.userId }, { $set: p }, { upsert: true });
+        }
+        for (const j of Array.from(this.jobs.values())) {
+          await this.jobModel.updateOne({ id: j.id }, { $set: j }, { upsert: true });
+        }
+        this.logger.log(`[MongoDB] Populated initial dataset into MongoDB collections.`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`[MongoDB] Sync error: ${err.message}`);
     }
   }
 
@@ -397,61 +497,100 @@ export class DataStoreService implements OnModuleInit {
   public saveUser(user: UserEntity) {
     this.users.set(user.id, user);
     this.persistToDisk();
+    if (this.userModel) {
+      this.userModel.updateOne({ email: user.email }, { $set: user }, { upsert: true }).catch(() => {});
+    }
   }
 
   public saveProfile(profile: LearnerProfileEntity) {
     this.profiles.set(profile.userId, profile);
     this.persistToDisk();
+    if (this.profileModel) {
+      this.profileModel.updateOne({ userId: profile.userId }, { $set: profile }, { upsert: true }).catch(() => {});
+    }
   }
 
   public saveJob(job: JobEntity) {
     this.jobs.set(job.id, job);
     this.persistToDisk();
+    if (this.jobModel) {
+      this.jobModel.updateOne({ id: job.id }, { $set: job }, { upsert: true }).catch(() => {});
+    }
   }
 
   public saveApplication(application: JobApplicationEntity) {
     this.applications.set(application.id, application);
     this.persistToDisk();
+    if (this.applicationModel) {
+      this.applicationModel.updateOne({ id: application.id }, { $set: application }, { upsert: true }).catch(() => {});
+    }
   }
 
   public saveRoadmap(roadmap: RoadmapEntity) {
     this.roadmaps.set(roadmap.id, roadmap);
     this.persistToDisk();
+    if (this.roadmapModel) {
+      this.roadmapModel.updateOne({ id: roadmap.id }, { $set: roadmap }, { upsert: true }).catch(() => {});
+    }
   }
 
   public recordAssessmentAttempt(attempt: any) {
     const id = `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    this.assessmentAttempts.set(id, { id, ...attempt, recordedAt: new Date().toISOString() });
+    const doc = { id, ...attempt, recordedAt: new Date().toISOString() };
+    this.assessmentAttempts.set(id, doc);
     this.persistToDisk();
+    if (this.attemptModel) {
+      this.attemptModel.create(doc).catch(() => {});
+    }
     return id;
   }
 
   public recordSkillEvidence(evidence: any) {
     const id = `evi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    this.skillEvidences.set(id, { id, ...evidence, createdAt: new Date().toISOString() });
+    const doc = { id, ...evidence, createdAt: new Date().toISOString() };
+    this.skillEvidences.set(id, doc);
     this.persistToDisk();
+    if (this.evidenceModel) {
+      this.evidenceModel.create(doc).catch(() => {});
+    }
     return id;
   }
 
   public recordNotification(notification: any) {
     const id = `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    this.notifications.set(id, { id, ...notification, createdAt: new Date().toISOString() });
+    const doc = { id, ...notification, createdAt: new Date().toISOString() };
+    this.notifications.set(id, doc);
     this.persistToDisk();
+    if (this.notificationModel) {
+      this.notificationModel.create(doc).catch(() => {});
+    }
     return id;
   }
 
   public logAnalyticsEvent(event: any) {
-    this.analyticsEvents.push({ ...event, timestamp: new Date().toISOString() });
+    const doc = { ...event, timestamp: new Date().toISOString() };
+    this.analyticsEvents.push(doc);
     this.persistToDisk();
+    if (this.analyticsModel) {
+      this.analyticsModel.create(doc).catch(() => {});
+    }
   }
 
   public recordAIUsage(usage: any) {
-    this.aiUsages.push({ ...usage, timestamp: new Date().toISOString() });
+    const doc = { ...usage, timestamp: new Date().toISOString() };
+    this.aiUsages.push(doc);
     this.persistToDisk();
+    if (this.aiUsageModel) {
+      this.aiUsageModel.create(doc).catch(() => {});
+    }
   }
 
   public logAudit(log: any) {
-    this.auditLogs.push({ ...log, timestamp: new Date().toISOString() });
+    const doc = { ...log, timestamp: new Date().toISOString() };
+    this.auditLogs.push(doc);
     this.persistToDisk();
+    if (this.auditModel) {
+      this.auditModel.create(doc).catch(() => {});
+    }
   }
 }
