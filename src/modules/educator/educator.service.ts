@@ -28,20 +28,23 @@ export class EducatorService {
             : 'Schedule 15-minute 1-on-1 career alignment checkpoint',
       }));
 
+    const courses = Array.from(this.dataStore.courses.values());
+    const curriculumModules = courses.map((c) => ({
+      id: c.id,
+      title: c.title,
+      completionRate: 0,
+    }));
+
     return {
-      cohortName: 'Fall 2026 AI Systems & Distributed Engineering Cohort',
+      cohortName: 'Enterprise AI Systems & Engineering Cohort',
       totalLearners: learners.length,
-      averageReadiness: Math.round(
-        learners.reduce((acc, l) => acc + l.readinessScore, 0) / (learners.length || 1),
-      ),
+      averageReadiness:
+        learners.length > 0
+          ? Math.round(learners.reduce((acc, l) => acc + l.readinessScore, 0) / learners.length)
+          : 0,
       activeInterventionsCount: alerts.length,
       alerts,
-      curriculumModules: [
-        { id: 'mod-1', title: 'Module 1: Strict TypeScript & Clean Backend Architecture', completionRate: 94 },
-        { id: 'mod-2', title: 'Module 2: RAG, Embeddings & Gemini Foundation Models', completionRate: 82 },
-        { id: 'mod-3', title: 'Module 3: Containerization & Cloud Deployment Verification', completionRate: 65 },
-        { id: 'mod-4', title: 'Module 4: Enterprise Mock Interviews & Placement Readiness', completionRate: 48 },
-      ],
+      curriculumModules,
     };
   }
 

@@ -48,16 +48,22 @@ export class MarketplaceService {
       const matchingSkills = job.requiredSkills.filter((s) => userSkills.has(s.toLowerCase()));
       const missingSkills = job.requiredSkills.filter((s) => !userSkills.has(s.toLowerCase()));
       
-      const skillScore = Math.round((matchingSkills.length / job.requiredSkills.length) * 100);
-      const readinessBonus = profile ? Math.round(profile.readinessScore * 0.15) : 0;
-      const matchScore = Math.min(Math.max(skillScore + readinessBonus, 45), 98);
+      const skillScore =
+        job.requiredSkills.length > 0
+          ? Math.round((matchingSkills.length / job.requiredSkills.length) * 80)
+          : 0;
+      const readinessBonus = profile ? Math.round((profile.readinessScore / 100) * 20) : 0;
+      const matchScore = Math.min(skillScore + readinessBonus, 100);
 
       return {
         ...job,
         matchScore,
         matchingSkills,
         missingSkills,
-        matchExplanation: `Match of ${matchScore}% calculated based on ${matchingSkills.length} of ${job.requiredSkills.length} required skills verified, combined with your readiness score (${profile?.readinessScore || 70}/100).`,
+        matchExplanation:
+          matchingSkills.length > 0
+            ? `Match of ${matchScore}% calculated based on ${matchingSkills.length} of ${job.requiredSkills.length} required skills verified (${matchingSkills.join(', ')}), combined with readiness index (${profile?.readinessScore || 0}%).`
+            : `0 matching required skills currently verified (${job.requiredSkills.slice(0, 3).join(', ')} required). Acquire skills to increase your match score.`,
       };
     });
   }
@@ -86,7 +92,10 @@ export class MarketplaceService {
 
     const userSkills = new Set(profile?.skills.map((s) => s.name.toLowerCase()) || []);
     const matchingCount = job.requiredSkills.filter((s) => userSkills.has(s.toLowerCase())).length;
-    const matchScore = Math.min(Math.round((matchingCount / job.requiredSkills.length) * 80 + 20), 98);
+    const skillPart =
+      job.requiredSkills.length > 0 ? Math.round((matchingCount / job.requiredSkills.length) * 80) : 0;
+    const readinessPart = profile ? Math.round((profile.readinessScore / 100) * 20) : 0;
+    const matchScore = Math.min(skillPart + readinessPart, 100);
 
     const appId = `app-${Date.now()}`;
     const newApp: JobApplicationEntity = {
@@ -99,7 +108,7 @@ export class MarketplaceService {
       matchScore,
       status: 'applied',
       appliedAt: new Date().toISOString().split('T')[0],
-      notes: `Applied with verified readiness score of ${profile?.readinessScore || 75}/100.`,
+      notes: `Applied with verified readiness score of ${profile?.readinessScore || 0}/100.`,
     };
 
     this.dataStore.saveApplication(newApp);

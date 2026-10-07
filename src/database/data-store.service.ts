@@ -281,11 +281,7 @@ export class DataStoreService implements OnModuleInit {
     this.ensureDataDirectory();
     await this.tryConnectMongoDB();
 
-    const loadedFromDisk = this.loadFromDisk();
-    if (!loadedFromDisk) {
-      await this.seedInitialData();
-      this.persistToDisk();
-    }
+    this.loadFromDisk();
 
     if (this.mongoConnection) {
       await this.syncToAndFromMongo();
@@ -347,6 +343,10 @@ export class DataStoreService implements OnModuleInit {
     }
   }
 
+  public get isMongoConnected(): boolean {
+    return this.mongoConnection !== null && this.mongoConnection.readyState === 1;
+  }
+
   private async syncToAndFromMongo() {
     if (!this.userModel) return;
     try {
@@ -362,19 +362,39 @@ export class DataStoreService implements OnModuleInit {
         for (const a of apps) this.applications.set(a.id, a as any);
         const roadmaps = await this.roadmapModel.find().lean();
         for (const r of roadmaps) this.roadmaps.set(r.id, r as any);
+        if (this.companyModel) {
+          const companies = await this.companyModel.find().lean();
+          for (const c of companies) this.companies.set(c.id, c as any);
+        }
+        if (this.skillModel) {
+          const skills = await this.skillModel.find().lean();
+          for (const s of skills) this.skills.set(s.id, s as any);
+        }
+        if (this.assessmentModel) {
+          const assessments = await this.assessmentModel.find().lean();
+          for (const a of assessments) this.assessments.set(a.id, a as any);
+        }
+        if (this.projectModel) {
+          const projects = await this.projectModel.find().lean();
+          for (const p of projects) this.projects.set(p.id, p as any);
+        }
+        if (this.courseModel) {
+          const courses = await this.courseModel.find().lean();
+          for (const c of courses) this.courses.set(c.id, c as any);
+        }
+        if (this.attemptModel) {
+          const attempts = await this.attemptModel.find().lean();
+          for (const a of attempts) this.assessmentAttempts.set(a.id || (a as any)._id?.toString(), a as any);
+        }
+        if (this.evidenceModel) {
+          const evidences = await this.evidenceModel.find().lean();
+          for (const e of evidences) this.skillEvidences.set(e.id || (e as any)._id?.toString(), e as any);
+        }
+        if (this.notificationModel) {
+          const notifs = await this.notificationModel.find().lean();
+          for (const n of notifs) this.notifications.set(n.id || (n as any)._id?.toString(), n as any);
+        }
         this.logger.log(`[MongoDB] Hydrated ${users.length} users and collections from MongoDB.`);
-      } else {
-        // Seed MongoDB from existing local store
-        for (const u of Array.from(this.users.values())) {
-          await this.userModel.updateOne({ email: u.email }, { $set: u }, { upsert: true });
-        }
-        for (const p of Array.from(this.profiles.values())) {
-          await this.profileModel.updateOne({ userId: p.userId }, { $set: p }, { upsert: true });
-        }
-        for (const j of Array.from(this.jobs.values())) {
-          await this.jobModel.updateOne({ id: j.id }, { $set: j }, { upsert: true });
-        }
-        this.logger.log(`[MongoDB] Populated initial dataset into MongoDB collections.`);
       }
     } catch (err: any) {
       this.logger.warn(`[MongoDB] Sync error: ${err.message}`);
@@ -444,7 +464,7 @@ export class DataStoreService implements OnModuleInit {
       this.logger.log(`[Persistence] Restored all collections from persistent disk storage.`);
       return true;
     } catch (err: any) {
-      this.logger.warn(`Failed reading persistent data from disk, will seed initial data: ${err.message}`);
+      this.logger.warn(`Failed reading persistent data from disk: ${err.message}`);
       return false;
     }
   }
@@ -531,6 +551,46 @@ export class DataStoreService implements OnModuleInit {
     this.persistToDisk();
     if (this.roadmapModel) {
       this.roadmapModel.updateOne({ id: roadmap.id }, { $set: roadmap }, { upsert: true }).catch(() => {});
+    }
+  }
+
+  public saveCompany(company: CompanyEntity) {
+    this.companies.set(company.id, company);
+    this.persistToDisk();
+    if (this.companyModel) {
+      this.companyModel.updateOne({ id: company.id }, { $set: company }, { upsert: true }).catch(() => {});
+    }
+  }
+
+  public saveSkill(skill: SkillEntity) {
+    this.skills.set(skill.id, skill);
+    this.persistToDisk();
+    if (this.skillModel) {
+      this.skillModel.updateOne({ id: skill.id }, { $set: skill }, { upsert: true }).catch(() => {});
+    }
+  }
+
+  public saveAssessment(assessment: AssessmentEntity) {
+    this.assessments.set(assessment.id, assessment);
+    this.persistToDisk();
+    if (this.assessmentModel) {
+      this.assessmentModel.updateOne({ id: assessment.id }, { $set: assessment }, { upsert: true }).catch(() => {});
+    }
+  }
+
+  public saveCourse(course: CourseEntity) {
+    this.courses.set(course.id, course);
+    this.persistToDisk();
+    if (this.courseModel) {
+      this.courseModel.updateOne({ id: course.id }, { $set: course }, { upsert: true }).catch(() => {});
+    }
+  }
+
+  public saveProject(project: ProjectEntity) {
+    this.projects.set(project.id, project);
+    this.persistToDisk();
+    if (this.projectModel) {
+      this.projectModel.updateOne({ id: project.id }, { $set: project }, { upsert: true }).catch(() => {});
     }
   }
 

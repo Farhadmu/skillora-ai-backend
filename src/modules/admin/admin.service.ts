@@ -17,6 +17,14 @@ export class AdminService {
     const skills = Array.from(this.dataStore.skills.values());
     const assessments = Array.from(this.dataStore.assessments.values());
 
+    const verifiedEvidences = Array.from(this.dataStore.skillEvidences.values()).filter((e) => e.verified);
+    const aiUsages = this.dataStore.aiUsages || [];
+    const totalTokens = aiUsages.reduce((acc, u) => acc + (u.tokens || 0), 0);
+    const avgLatency =
+      aiUsages.length > 0
+        ? Math.round(aiUsages.reduce((acc, u) => acc + (u.latencyMs || 0), 0) / aiUsages.length)
+        : 0;
+
     return {
       overview: {
         totalUsers: users.length,
@@ -27,30 +35,32 @@ export class AdminService {
         totalApplications: applications.length,
         totalSkillsStandardized: skills.length,
         totalAssessments: assessments.length,
-        verifiedSkillsAwarded: 142,
+        verifiedSkillsAwarded: verifiedEvidences.length,
       },
       aiGovernance: {
-        totalInferenceRequests: 18450,
-        estimatedTokensUsed: 14250000,
-        averageLatencyMs: 240,
-        fallbackEngineHitRatio: '8.4%',
-        activeModels: ['gemini-1.5-flash', 'llama-3.3-70b-versatile', 'command-r', 'skillora-semantic-heuristics-v2'],
+        totalInferenceRequests: aiUsages.length,
+        estimatedTokensUsed: totalTokens,
+        averageLatencyMs: avgLatency,
+        fallbackEngineHitRatio:
+          aiUsages.length > 0
+            ? `${Math.round((aiUsages.filter((u) => u.isFallback).length / aiUsages.length) * 100)}%`
+            : '0%',
+        activeModels: [
+          'gemini-1.5-flash',
+          'gemini-2.0-flash',
+          'llama-3.3-70b-versatile',
+          'skillora-semantic-heuristics-v2',
+        ],
         costEstimateUsd: '$0.00 (Zero-Cost Free Provider Cascade)',
       },
       systemHealth: {
         apiStatus: 'HEALTHY',
-        databaseStatus: 'CONNECTED',
+        databaseStatus: this.dataStore.isMongoConnected ? 'CONNECTED' : 'PERSISTENT_FILE_BACKED',
         vectorDbStatus: 'ACTIVE',
         uptimeSeconds: Math.round(process.uptime()),
         memoryUsageMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
       },
-      auditLogs: [
-        { timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), action: 'AI_CASCADE_VERIFIED', actor: 'system-governance', detail: 'Multi-provider health check: 8 tiers online/standby' },
-        { timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), action: 'ASSESSMENT_VERIFIED', actor: 'usr-learner-1', detail: 'Passed TypeScript Enterprise with 92%' },
-        { timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(), action: 'CANDIDATE_SHORTLISTED', actor: 'usr-employer-1', detail: 'Moved candidate Farhadul Islam to INTERVIEW stage' },
-        { timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), action: 'AI_ROADMAP_GENERATED', actor: 'usr-learner-1', detail: 'Created 30-Day Full-Stack AI Engineer Roadmap' },
-        { timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(), action: 'NEW_JOB_POSTED', actor: 'comp-1', detail: 'Published Full-Stack AI Systems Engineer position' },
-      ],
+      auditLogs: this.dataStore.auditLogs.slice(-20).reverse(),
     };
   }
 

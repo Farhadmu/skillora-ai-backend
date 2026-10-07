@@ -9,20 +9,16 @@ export class SkillBridgeService {
     private readonly aiService: AiService,
   ) {}
 
-  async getActiveRoadmap(userId: string): Promise<RoadmapEntity> {
+  async getActiveRoadmap(userId: string): Promise<RoadmapEntity | null> {
     const roadmap = Array.from(this.dataStore.roadmaps.values()).find(
       (r) => r.userId === userId,
     );
-    if (!roadmap) {
-      // Auto-generate default 30-day roadmap if not exists
-      return this.generateRoadmap(userId, 'Full-Stack AI Systems Engineer', 30);
-    }
-    return roadmap;
+    return roadmap || null;
   }
 
   async generateRoadmap(userId: string, targetRole: string, durationDays: number): Promise<RoadmapEntity> {
     const profile = this.dataStore.profiles.get(userId);
-    const userSkills = profile?.skills.map((s) => s.name) || ['JavaScript', 'HTML5', 'CSS3'];
+    const userSkills = profile?.skills.map((s) => s.name) || [];
 
     const aiPlan = await this.aiService.generateRoadmap(targetRole, userSkills, durationDays);
 

@@ -11,58 +11,49 @@ export class AnalyticsService {
       (a) => a.userId === userId,
     );
 
-    const assessmentTrend = userAttempts.length > 0
-      ? userAttempts.slice(-5).map((a) => ({
-          test: a.skillName || a.assessmentTitle,
-          score: a.score,
-        }))
-      : [
-          { test: 'JS Fundamentals', score: 85 },
-          { test: 'React Internals', score: 88 },
-          { test: 'TypeScript Enterprise', score: 92 },
-          { test: 'NestJS Dependency Injection', score: 86 },
-          { test: 'RAG & Vector Retrieval', score: 84 },
-        ];
+    const assessmentTrend = userAttempts.map((a) => ({
+      test: a.skillName || a.assessmentTitle,
+      score: a.score,
+    }));
+
+    const readinessTrajectory =
+      profile?.readinessScore != null && profile.readinessScore > 0
+        ? [{ month: 'Current', score: profile.readinessScore }]
+        : [];
 
     return {
-      readinessTrajectory: [
-        { month: 'May', score: 45 },
-        { month: 'Jun', score: 58 },
-        { month: 'Jul', score: 66 },
-        { month: 'Aug', score: 74 },
-        { month: 'Sep', score: 79 },
-        { month: 'Oct', score: profile?.readinessScore || 84 },
-      ],
-      weeklyStudyHours: [
-        { day: 'Mon', hours: 3.5 },
-        { day: 'Tue', hours: 4.0 },
-        { day: 'Wed', hours: 2.5 },
-        { day: 'Thu', hours: 5.0 },
-        { day: 'Fri', hours: 4.5 },
-        { day: 'Sat', hours: 6.0 },
-        { day: 'Sun', hours: 3.0 },
-      ],
-      skillProficiencyDistribution: profile?.skills.map((s) => ({
-        skill: s.name,
-        proficiency: s.proficiency,
-        confidence: s.confidence,
-        verified: s.verified,
-      })) || [],
+      readinessTrajectory,
+      weeklyStudyHours: [],
+      skillProficiencyDistribution:
+        profile?.skills?.map((s) => ({
+          skill: s.name,
+          proficiency: s.proficiency,
+          confidence: s.confidence,
+          verified: s.verified,
+        })) || [],
       assessmentScoreTrend: assessmentTrend,
     };
   }
 
   getEmployerFunnel(companyId?: string) {
-    const apps = Array.from(this.dataStore.applications.values());
-    const applied = apps.length || 142;
-    const screening = apps.filter((a) => a.status === 'screening' || a.status === 'reviewing').length || 86;
-    const shortlisted = apps.filter((a) => a.status === 'shortlisted').length || 42;
-    const interview = apps.filter((a) => a.status === 'interview' || a.status === 'interviewing').length || 28;
-    const final = apps.filter((a) => a.status === 'final').length || 14;
-    const offered = apps.filter((a) => a.status === 'offered').length || 8;
-    const hired = apps.filter((a) => a.status === 'hired').length || 6;
+    const allApps = Array.from(this.dataStore.applications.values());
+    const apps = companyId
+      ? allApps.filter((a) => {
+          const job = this.dataStore.jobs.get(a.jobId);
+          return job?.companyId === companyId;
+        })
+      : allApps;
+
+    const applied = apps.length;
+    const screening = apps.filter((a) => a.status === 'screening' || a.status === 'reviewing').length;
+    const shortlisted = apps.filter((a) => a.status === 'shortlisted').length;
+    const interview = apps.filter((a) => a.status === 'interview' || a.status === 'interviewing').length;
+    const final = apps.filter((a) => a.status === 'final').length;
+    const offered = apps.filter((a) => a.status === 'offered').length;
+    const hired = apps.filter((a) => a.status === 'hired').length;
 
     return {
+      hasData: apps.length > 0,
       funnel: [
         { stage: 'Applied Candidates', count: applied },
         { stage: 'Profile Screened', count: screening },
@@ -72,8 +63,8 @@ export class AnalyticsService {
         { stage: 'Offers Extended', count: offered },
         { stage: 'Hired', count: hired },
       ],
-      averageTimeToHireDays: 14,
-      retentionProbability: '94%',
+      averageTimeToHireDays: apps.length > 0 ? 14 : 0,
+      retentionProbability: apps.length > 0 ? '94%' : 'N/A',
       topVerifiedSkillsInDemand: ['TypeScript', 'NestJS', 'Next.js', 'RAG & Vector Search', 'Docker'],
     };
   }

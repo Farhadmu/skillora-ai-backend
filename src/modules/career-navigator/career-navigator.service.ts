@@ -74,10 +74,12 @@ export class CareerNavigatorService {
     );
 
     return {
-      roleA: { ...infoA, userMatchPercentage: Math.max(matchA, 50) },
-      roleB: { ...infoB, userMatchPercentage: Math.max(matchB, 40) },
+      roleA: { ...infoA, userMatchPercentage: matchA },
+      roleB: { ...infoB, userMatchPercentage: matchB },
       recommendation:
-        matchA >= matchB
+        userSkills.length === 0
+          ? 'Add your skills or complete an assessment to calculate personalized transition distances.'
+          : matchA >= matchB
           ? `Based on your existing skills in ${userSkills.slice(0, 3).join(', ')}, ${infoA.title} offers the shortest transition distance.`
           : `Your background provides a strong springboard into ${infoB.title}.`,
     };
@@ -88,7 +90,7 @@ export class CareerNavigatorService {
    */
   async analyzeJobDescription(userId: string, jdText: string) {
     const profile = this.dataStore.profiles.get(userId);
-    const userSkills = profile?.skills.map((s) => s.name) || ['TypeScript', 'React', 'REST API'];
+    const userSkills = profile?.skills.map((s) => s.name) || [];
 
     return this.aiService.analyzeJobDescription(jdText, userSkills);
   }

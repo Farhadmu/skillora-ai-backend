@@ -11,7 +11,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItbGVhcm5lci0xIiwiZW1haWwiOiJsZWFybmVyQHNraWxsb3JhLmFpIiwicm9sZSI6IkxFQVJORVIiLCJuYW1lIjoiRmFyaGFkdWwgSXNsYW0iLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyODgwNDQsImV4cCI6MTc5MTg5Mjg0NH0.5thNP93aEK65c-MuPXG9BW9XKmvOdow5JIRiXqE9DNw"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItbGVhcm5lci0xIiwiZW1haWwiOiJsZWFybmVyQHNraWxsb3JhLmFpIiwicm9sZSI6IkxFQVJORVIiLCJuYW1lIjoiRmFyaGFkdWwgSXNsYW0iLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEzMDQ2MDQsImV4cCI6MTc5MTkwOTQwNH0.LAo7uVqJKO7k01wCkf4tCchQOr6FvzBqHwd0LaZt0nY"
       }
     ],
     [
@@ -64,7 +64,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZWR1Y2F0b3ItMSIsImVtYWlsIjoiZWR1Y2F0b3JAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRURVQ0FUT1IiLCJuYW1lIjoiRHIuIEFsYW4gTWl0Y2hlbGwiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyNTA0OTcsImV4cCI6MTc5MTg1NTI5N30.qCqTegrij81hJwEt61J9_rJIZOxVhJSxXw5AB8PhGZg"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZWR1Y2F0b3ItMSIsImVtYWlsIjoiZWR1Y2F0b3JAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRURVQ0FUT1IiLCJuYW1lIjoiRHIuIEFsYW4gTWl0Y2hlbGwiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyOTgzMTcsImV4cCI6MTc5MTkwMzExN30.u87JfMhs7ea7bm8cUV9aUKwKU25DbkfaTfR7ZuUowZM"
       }
     ],
     [
@@ -91,7 +91,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZW1wbG95ZXItMSIsImVtYWlsIjoiZW1wbG95ZXJAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRU1QTE9ZRVIiLCJuYW1lIjoiRWxlbmEgUm9zdG92YSAoVGVjaFNjYWxlIEFJKSIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI5MjQwMiwiZXhwIjoxNzkxODk3MjAyfQ.-Obyc57ES7Nq4lrdinUdF42pp3IYrdbLFTLnsSL3WJ0"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItZW1wbG95ZXItMSIsImVtYWlsIjoiZW1wbG95ZXJAc2tpbGxvcmEuYWkiLCJyb2xlIjoiRU1QTE9ZRVIiLCJuYW1lIjoiRWxlbmEgUm9zdG92YSAoVGVjaFNjYWxlIEFJKSIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI5ODMyNiwiZXhwIjoxNzkxOTAzMTI2fQ.Dl6PTRAQrAEJsZqkUhh_mPjFUapwpBQEk-aGgqunhrU"
       }
     ],
     [
@@ -118,7 +118,7 @@
         "isVerified": true,
         "passwordHash": "$2b$10$W.5X2V/LN4roNiHSSO0QFOu3jxQ68mdZLr.07oebOBQlqm7fyCFgK",
         "createdAt": "2026-10-05T18:33:01.671Z",
-        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItYWRtaW4tMSIsImVtYWlsIjoiYWRtaW5Ac2tpbGxvcmEuYWkiLCJyb2xlIjoiQURNSU4iLCJuYW1lIjoiU2tpbGxvcmEgU3VwZXJBZG1pbiIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI0NzY3NSwiZXhwIjoxNzkxODUyNDc1fQ.86zPOKEiA_wERdimum6bxDcVWUVQ3Q6ywlWg8Ow96Iw"
+        "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItYWRtaW4tMSIsImVtYWlsIjoiYWRtaW5Ac2tpbGxvcmEuYWkiLCJyb2xlIjoiQURNSU4iLCJuYW1lIjoiU2tpbGxvcmEgU3VwZXJBZG1pbiIsImlzVmVyaWZpZWQiOnRydWUsImlhdCI6MTc5MTI5ODM3MSwiZXhwIjoxNzkxOTAzMTcxfQ.iUtPX26-u-3a8StW0ja33eaiI6SxZHJ4XERarwx6K-8"
       }
     ],
     [
@@ -171,6 +171,40 @@
         "careerInterest": "Full-Stack AI Systems Engineer",
         "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c3ItMTc5MTI5MjEwMjc2NiIsImVtYWlsIjoidGVzdF9sZWFybmVyXzE3OTEyOTIxMDI1OTVAc2tpbGxvcmEuYWkiLCJyb2xlIjoiTEVBUk5FUiIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIDE3OTEyOTIxMDI1OTUiLCJpc1ZlcmlmaWVkIjp0cnVlLCJpYXQiOjE3OTEyOTI0MDIsImV4cCI6MTc5MTg5NzIwMn0.fLT9PV8bR_CT9ciVLneUYCItFX8xbPlkVPbgMHWmsRQ"
       }
+    ],
+    [
+      "usr-1791303731806",
+      {
+        "id": "usr-1791303731806",
+        "email": "zara.chen.1791303731257@skillora.ai",
+        "passwordHash": "$2b$10$grXNszV4T7hAJazxhJF2JOW8yEn/e7IR/yM506gKKx62crdoHgpiW",
+        "name": "Zara Chen",
+        "role": "LEARNER",
+        "headline": "Skillora AI Learner",
+        "createdAt": "2026-10-06T16:22:11.806Z",
+        "isVerified": false,
+        "verificationTokenHash": "e99433499cb3b3cacbac0a3f1944ee89e0624e1d2b31f150b508127d47a2f2ac",
+        "verificationTokenExpires": "2026-10-07T16:22:11.806Z",
+        "educationLevel": "BSc Computer Science",
+        "careerInterest": "Full-Stack AI Systems Engineer"
+      }
+    ],
+    [
+      "usr-1791303778769",
+      {
+        "id": "usr-1791303778769",
+        "email": "zara.chen.1791303778564@skillora.ai",
+        "passwordHash": "$2b$10$WC946miUK/kWue3H0kZhye0t717ZdHPvzcKgcuWvxta0y.c28uaU.",
+        "name": "Zara Chen",
+        "role": "LEARNER",
+        "headline": "Skillora AI Learner",
+        "createdAt": "2026-10-06T16:22:58.769Z",
+        "isVerified": false,
+        "verificationTokenHash": "da0ad1d9ec78b91b50ae0f0a36db3cea5d32516d998d2840717d7c37db5a7e73",
+        "verificationTokenExpires": "2026-10-07T16:22:58.769Z",
+        "educationLevel": "BSc Computer Science",
+        "careerInterest": "Full-Stack AI Systems Engineer"
+      }
     ]
   ],
   "profiles": [
@@ -194,8 +228,8 @@
         ],
         "preferredMode": "remote",
         "weeklyHours": 20,
-        "readinessScore": 85,
-        "completenessScore": 92,
+        "readinessScore": 31,
+        "completenessScore": 100,
         "githubUrl": "https://github.com/skillora-demo",
         "portfolioUrl": "https://skillora.ai/portfolio/farhadul",
         "skills": [
@@ -309,13 +343,13 @@
           }
         ],
         "readinessDimensions": {
-          "technical": 88,
-          "problemSolving": 85,
-          "projects": 86,
-          "communication": 80,
-          "interview": 82,
-          "roleAlignment": 84,
-          "practical": 81
+          "technical": 84,
+          "problemSolving": 0,
+          "projects": 0,
+          "communication": 0,
+          "interview": 0,
+          "roleAlignment": 83,
+          "practical": 34
         },
         "education": [
           {
@@ -572,6 +606,75 @@
           "practical": 55
         },
         "activeRoadmapId": "rdm-1791292102946"
+      }
+    ],
+    [
+      "usr-1791303731806",
+      {
+        "userId": "usr-1791303731806",
+        "name": "Zara Chen",
+        "email": "zara.chen.1791303731257@skillora.ai",
+        "headline": "Skillora AI Learner",
+        "bio": "Welcome to my Skillora AI verified workforce intelligence profile.",
+        "degree": "BSc Computer Science",
+        "institution": "",
+        "graduationYear": "2025",
+        "targetRole": "Full-Stack AI Systems Engineer",
+        "targetCompanies": [],
+        "preferredMode": "remote",
+        "weeklyHours": 15,
+        "readinessScore": 0,
+        "completenessScore": 30,
+        "skills": [],
+        "readinessDimensions": {
+          "technical": 0,
+          "problemSolving": 0,
+          "projects": 0,
+          "communication": 0,
+          "interview": 0,
+          "roleAlignment": 0,
+          "practical": 0
+        }
+      }
+    ],
+    [
+      "usr-1791303778769",
+      {
+        "userId": "usr-1791303778769",
+        "name": "Zara Chen",
+        "email": "zara.chen.1791303778564@skillora.ai",
+        "headline": "Skillora AI Learner",
+        "bio": "Welcome to my Skillora AI verified workforce intelligence profile.",
+        "degree": "BSc Computer Science",
+        "institution": "",
+        "graduationYear": "2025",
+        "targetRole": "Full-Stack AI Systems Engineer",
+        "targetCompanies": [],
+        "preferredMode": "remote",
+        "weeklyHours": 15,
+        "readinessScore": 33,
+        "completenessScore": 30,
+        "skills": [
+          {
+            "name": "TypeScript",
+            "category": "Programming",
+            "proficiency": 67,
+            "confidence": 67,
+            "verified": false,
+            "evidence": [
+              "Verified Assessment: Advanced TypeScript & Enterprise Architecture (67%)"
+            ]
+          }
+        ],
+        "readinessDimensions": {
+          "technical": 67,
+          "problemSolving": 67,
+          "projects": 0,
+          "communication": 0,
+          "interview": 0,
+          "roleAlignment": 17,
+          "practical": 27
+        }
       }
     ]
   ],
@@ -1700,6 +1803,47 @@
         ],
         "recordedAt": "2026-10-06T13:08:22.956Z"
       }
+    ],
+    [
+      "att-1791303778803-hqmj",
+      {
+        "id": "att-1791303778803-hqmj",
+        "userId": "usr-1791303778769",
+        "assessmentId": "asm-1",
+        "assessmentTitle": "Advanced TypeScript & Enterprise Architecture",
+        "skillName": "TypeScript",
+        "score": 67,
+        "passed": false,
+        "totalQuestions": 3,
+        "correctAnswers": 2,
+        "answers": [
+          {
+            "questionId": "q1",
+            "prompt": "In TypeScript, what is the exact difference between type and interface when designing extensible open models?",
+            "userAnswer": 0,
+            "correctAnswer": 0,
+            "isCorrect": true,
+            "explanation": "TypeScript interfaces are open and support declaration merging, making them ideal for library API contracts and public schemas."
+          },
+          {
+            "questionId": "q2",
+            "prompt": "How does the \"satisfies\" operator introduced in TypeScript 4.9 improve on type assertions (as Type)?",
+            "userAnswer": 1,
+            "correctAnswer": 1,
+            "isCorrect": true,
+            "explanation": "The satisfies operator verifies type conformity while preserving specific literal member types and autocompletion."
+          },
+          {
+            "questionId": "q3",
+            "prompt": "Write a generic TypeScript type \"DeepReadonly<T>\" that recursively marks all properties of object T as readonly.",
+            "userAnswer": 0,
+            "correctAnswer": "DeepReadonly",
+            "isCorrect": false,
+            "explanation": "Recursive mapped types traverse nested dictionary structures to apply readonly immutability at every level."
+          }
+        ],
+        "recordedAt": "2026-10-06T16:22:58.803Z"
+      }
     ]
   ],
   "skillEvidences": [
@@ -2065,9 +2209,68 @@
         "matchScore": 87
       },
       "timestamp": "2026-10-06T13:08:22.963Z"
+    },
+    {
+      "eventName": "assessment_completed",
+      "userId": "usr-1791303778769",
+      "metadata": {
+        "assessmentId": "asm-1",
+        "skillName": "TypeScript",
+        "score": 67,
+        "passed": false
+      },
+      "timestamp": "2026-10-06T16:22:58.811Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:13.288Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:18.158Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:20.777Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:22.302Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:23.874Z"
+    },
+    {
+      "eventName": "profile_updated",
+      "userId": "usr-learner-1",
+      "metadata": {
+        "completenessScore": 100
+      },
+      "timestamp": "2026-10-06T16:37:28.945Z"
     }
   ],
   "aiUsages": [],
   "auditLogs": [],
-  "savedAt": "2026-10-06T13:13:22.680Z"
+  "savedAt": "2026-10-06T16:38:17.591Z"
 }
