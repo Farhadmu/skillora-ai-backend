@@ -1,18 +1,29 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { DataStoreService, JobEntity, JobApplicationEntity } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
+import { Job, JobDocument, JobApplication, JobApplicationDocument } from '../../database/schemas/job.schema';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { Notification, NotificationDocument } from '../../database/schemas/communication.schema';
+import { AnalyticsEvent, AnalyticsEventDocument } from '../../database/schemas/analytics-audit.schema';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class MarketplaceService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
+    @InjectModel(JobApplication.name) private readonly applicationModel: Model<JobApplicationDocument>,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(Notification.name) private readonly notificationModel: Model<NotificationDocument>,
+    @InjectModel(AnalyticsEvent.name) private readonly analyticsModel: Model<AnalyticsEventDocument>,
     private readonly aiService: AiService,
   ) {}
 
   /**
    * Search and browse verified jobs with AI Match Score calculation
    */
-  getJobsForLearner(
+  async getJobsForLearner(
     userId?: string,
     filters?: {
       mode?: string;
@@ -20,102 +31,106 @@ export class MarketplaceService {
       query?: string;
     },
   ) {
-    let list = Array.from(this.dataStore.jobs.values());
-
+    const filter: any = {};
     if (filters?.mode && filters.mode !== 'all') {
-      list = list.filter((j) => j.mode.toLowerCase() === filters.mode.toLowerCase());
+      filter.mode = new RegExp(`^${filters.mode}$`, 'i');
     }
-
     if (filters?.experienceLevel && filters.experienceLevel !== 'all') {
-      list = list.filter((j) => j.experienceLevel.toLowerCase() === filters.experienceLevel.toLowerCase());
+      filter.experienceLevel = new RegExp(`^${filters.experienceLevel}$`, 'i');
     }
-
     if (filters?.query) {
-      const q = filters.query.toLowerCase();
-      list = list.filter(
-        (j) =>
-          j.title.toLowerCase().includes(q) ||
-          j.companyName.toLowerCase().includes(q) ||
-          j.requiredSkills.some((s) => s.toLowerCase().includes(q)),
-      );
+      filter.$or = [
+        { title: new RegExp(filters.query, 'i') },
+        { companyName: new RegExp(filters.query, 'i') },
+        { requiredSkills: new RegExp(filters.query, 'i') },
+      ];
     }
 
-    const profile = userId ? this.dataStore.profiles.get(userId) : null;
-    const userSkills = new Set(profile?.skills.map((s) => s.name.toLowerCase()) || []);
+    const list = await this.jobModel.find(filter).lean();
+    const profile = userId ? await this.profileModel.findOne({ userId }).lean() : null;
+    const userSkills = new Set((profile?.skills || []).map((s: any) => s.name.toLowerCase()));
 
-    return list.map((job) => {
-      // Explainable AI Match Calculation
-      const matchingSkills = job.requiredSkills.filter((s) => userSkills.has(s.toLowerCase()));
-      const missingSkills = job.requiredSkills.filter((s) => !userSkills.has(s.toLowerCase()));
-      
+    return list.map((job: any) => {
+      const requiredSkills = job.requiredSkills || [];
+      const matchingSkills = requiredSkills.filter((s: string) => userSkills.has(s.toLowerCase()));
+      const missingSkills = requiredSkills.filter((s: string) => !userSkills.has(s.toLowerCase()));
+
       const skillScore =
-        job.requiredSkills.length > 0
-          ? Math.round((matchingSkills.length / job.requiredSkills.length) * 80)
+        requiredSkills.length > 0
+          ? Math.round((matchingSkills.length / requiredSkills.length) * 80)
           : 0;
-      const readinessBonus = profile ? Math.round((profile.readinessScore / 100) * 20) : 0;
+      const readinessBonus = profile ? Math.round(((profile.readinessScore || 0) / 100) * 20) : 0;
       const matchScore = Math.min(skillScore + readinessBonus, 100);
 
       return {
         ...job,
+        id: job.id || job._id.toString(),
         matchScore,
         matchingSkills,
         missingSkills,
         matchExplanation:
           matchingSkills.length > 0
-            ? `Match of ${matchScore}% calculated based on ${matchingSkills.length} of ${job.requiredSkills.length} required skills verified (${matchingSkills.join(', ')}), combined with readiness index (${profile?.readinessScore || 0}%).`
-            : `0 matching required skills currently verified (${job.requiredSkills.slice(0, 3).join(', ')} required). Acquire skills to increase your match score.`,
+            ? `Match of ${matchScore}% calculated based on ${matchingSkills.length} of ${requiredSkills.length} required skills verified (${matchingSkills.join(', ')}), combined with readiness index (${profile?.readinessScore || 0}%).`
+            : `0 matching required skills currently verified (${requiredSkills.slice(0, 3).join(', ')} required). Acquire skills to increase your match score.`,
       };
     });
   }
 
-  getJobById(id: string) {
-    const job = this.dataStore.jobs.get(id);
+  async getJobById(id: string): Promise<any> {
+    const query: any[] = [{ id }];
+    if (isValidObjectId(id)) query.push({ _id: id });
+
+    const job = await this.jobModel.findOne({ $or: query }).lean();
     if (!job) {
       throw new NotFoundException(`Job ${id} not found`);
     }
-    return job;
+    return {
+      ...job,
+      id: job.id || (job as any)._id?.toString(),
+    };
   }
 
   /**
    * Apply for a job
    */
-  applyForJob(userId: string, jobId: string) {
-    const job = this.getJobById(jobId);
-    const profile = this.dataStore.profiles.get(userId);
+  async applyForJob(userId: string, jobId: string): Promise<any> {
+    const job: any = await this.getJobById(jobId);
+    const profile = await this.profileModel.findOne({ userId }).lean();
 
-    const existing = Array.from(this.dataStore.applications.values()).find(
-      (a) => a.userId === userId && a.jobId === jobId,
-    );
+    const existing = await this.applicationModel.findOne({ userId, jobId }).lean();
     if (existing) {
-      return existing;
+      return {
+        ...existing,
+        id: existing.id || (existing as any)._id?.toString(),
+      };
     }
 
-    const userSkills = new Set(profile?.skills.map((s) => s.name.toLowerCase()) || []);
-    const matchingCount = job.requiredSkills.filter((s) => userSkills.has(s.toLowerCase())).length;
+    const requiredSkills = job.requiredSkills || [];
+    const userSkills = new Set((profile?.skills || []).map((s: any) => s.name.toLowerCase()));
+    const matchingCount = requiredSkills.filter((s: string) => userSkills.has(s.toLowerCase())).length;
     const skillPart =
-      job.requiredSkills.length > 0 ? Math.round((matchingCount / job.requiredSkills.length) * 80) : 0;
-    const readinessPart = profile ? Math.round((profile.readinessScore / 100) * 20) : 0;
+      requiredSkills.length > 0 ? Math.round((matchingCount / requiredSkills.length) * 80) : 0;
+    const readinessPart = profile ? Math.round(((profile.readinessScore || 0) / 100) * 20) : 0;
     const matchScore = Math.min(skillPart + readinessPart, 100);
 
     const appId = `app-${Date.now()}`;
-    const newApp: JobApplicationEntity = {
+    const newApp = await this.applicationModel.create({
       id: appId,
       jobId,
       userId,
       candidateName: profile?.name || 'Skillora Candidate',
       jobTitle: job.title,
       companyName: job.companyName,
+      companyId: job.companyId || '',
       matchScore,
       status: 'applied',
-      appliedAt: new Date().toISOString().split('T')[0],
       notes: `Applied with verified readiness score of ${profile?.readinessScore || 0}/100.`,
-    };
+    });
 
-    this.dataStore.saveApplication(newApp);
-    job.applicantsCount++;
-    this.dataStore.saveJob(job);
+    await this.jobModel.updateOne({ $or: [{ id: jobId }, { _id: isValidObjectId(jobId) ? jobId : undefined }] }, { $inc: { applicantsCount: 1 } });
 
-    this.dataStore.recordNotification({
+    await this.notificationModel.create({
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId,
       title: `Application Submitted: ${job.title}`,
       message: `Your application to ${job.companyName} for ${job.title} was submitted with a match score of ${matchScore}%.`,
@@ -123,25 +138,30 @@ export class MarketplaceService {
       link: '/learner/jobs/applications',
     });
 
-    this.dataStore.logAnalyticsEvent({
+    await this.analyticsModel.create({
       eventName: 'job_applied',
       userId,
       metadata: { jobId, jobTitle: job.title, companyName: job.companyName, matchScore },
-    });
+    }).catch(() => {});
 
-    return newApp;
+    return newApp.toObject ? newApp.toObject() : newApp;
   }
 
-  getLearnerApplications(userId: string) {
-    return Array.from(this.dataStore.applications.values()).filter((a) => a.userId === userId);
+  async getLearnerApplications(userId: string) {
+    const list = await this.applicationModel.find({ userId }).lean();
+    return list.map((a: any) => ({
+      ...a,
+      id: a.id || a._id.toString(),
+    }));
   }
 
   /**
    * Employer Pipeline Management with Strict Multi-Tenant Isolation
    */
-  getEmployerCandidates(user: any) {
+  async getEmployerCandidates(user: any) {
     const isAdmin = user?.role === 'admin';
-    const employerJobs = Array.from(this.dataStore.jobs.values()).filter((j) => {
+    const allJobs = await this.jobModel.find().lean();
+    const employerJobs = allJobs.filter((j: any) => {
       if (isAdmin) return true;
       return (
         j.ownerUserId === user.id ||
@@ -150,35 +170,51 @@ export class MarketplaceService {
       );
     });
 
-    const allowedJobIds = new Set(employerJobs.map((j) => j.id));
+    const allowedJobIds = new Set(employerJobs.map((j: any) => j.id || j._id.toString()));
 
-    return Array.from(this.dataStore.applications.values())
-      .filter((app) => isAdmin || allowedJobIds.has(app.jobId))
-      .map((app) => {
-        const candidateUser = this.dataStore.users.get(app.userId);
-        const profile = this.dataStore.profiles.get(app.userId);
+    const allApps = await this.applicationModel.find().lean();
+    const filteredApps = allApps.filter((app: any) => isAdmin || allowedJobIds.has(app.jobId));
+
+    const enriched = await Promise.all(
+      filteredApps.map(async (app: any) => {
+        const candidateUser = await this.userModel.findOne({
+          $or: [{ id: app.userId }, { _id: isValidObjectId(app.userId) ? app.userId : undefined }],
+        }).lean();
+        const profile = await this.profileModel.findOne({ userId: app.userId }).lean();
+
         return {
           ...app,
+          id: app.id || app._id.toString(),
           candidateEmail: candidateUser?.email || profile?.email,
           email: candidateUser?.email || profile?.email,
           candidateName: profile?.name || candidateUser?.name || app.candidateName,
           targetRole: profile?.targetRole,
           readinessScore: profile?.readinessScore,
         };
-      });
+      }),
+    );
+
+    return enriched;
   }
 
-  updateApplicationStage(applicationId: string, stage: JobApplicationEntity['status'], user: any) {
-    const app = this.dataStore.applications.get(applicationId);
+  async updateApplicationStage(applicationId: string, stage: any, user: any) {
+    const query: any[] = [{ id: applicationId }];
+    if (isValidObjectId(applicationId)) query.push({ _id: applicationId });
+
+    const app = await this.applicationModel.findOne({ $or: query });
     if (!app) {
       throw new NotFoundException(`Application ${applicationId} not found`);
     }
 
-    const job = this.dataStore.jobs.get(app.jobId);
+    const jobQuery: any[] = [{ id: app.jobId }];
+    if (isValidObjectId(app.jobId)) jobQuery.push({ _id: app.jobId });
+    const job = await this.jobModel.findOne({ $or: jobQuery }).lean();
+
     const isAdmin = user?.role === 'admin';
     if (!isAdmin && job) {
       const isOwner =
-        job.ownerUserId === user.id ||
+        (job as any).ownerUserId === user.id ||
+        (job as any).creatorUserId === user.id ||
         job.companyId === user.id ||
         (user.companyName && job.companyName?.toLowerCase() === user.companyName.toLowerCase());
       if (!isOwner) {
@@ -187,32 +223,33 @@ export class MarketplaceService {
     }
 
     app.status = stage;
-    this.dataStore.saveApplication(app);
+    await app.save();
 
-    this.dataStore.recordNotification({
+    await this.notificationModel.create({
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId: app.userId,
-      title: `Application Status Updated: ${stage.toUpperCase()}`,
+      title: `Application Status Updated: ${String(stage).toUpperCase()}`,
       message: `${app.companyName} moved your application for ${app.jobTitle} to "${stage}".`,
       type: 'application',
       link: '/learner/jobs/applications',
     });
 
-    this.dataStore.logAnalyticsEvent({
+    await this.analyticsModel.create({
       eventName: 'application_status_changed',
       userId: app.userId,
       metadata: { applicationId, stage, jobTitle: app.jobTitle, companyName: app.companyName },
-    });
+    }).catch(() => {});
 
-    return app;
+    return app.toObject ? app.toObject() : app;
   }
 
   /**
    * Post New Job Opening (Employer Studio) with Server-Derived Ownership
    */
-  createJob(jobData: Partial<JobEntity>, user: any) {
+  async createJob(jobData: any, user: any) {
     const jobId = `job-${Date.now()}`;
     const companyName = user?.companyName || jobData.companyName || `${user?.name || 'Enterprise'} Inc.`;
-    const newJob: JobEntity = {
+    const newJob = await this.jobModel.create({
       id: jobId,
       companyId: user?.id || 'comp-1',
       ownerUserId: user?.id,
@@ -237,19 +274,18 @@ export class MarketplaceService {
         'Proven experience with distributed systems and asynchronous message queues',
         'Skillora Readiness Score of 80+ preferred',
       ],
-      postedAt: 'Just now',
+      postedAt: new Date(),
       applicantsCount: 0,
-    };
+      status: 'published',
+    });
 
-    this.dataStore.saveJob(newJob);
-
-    this.dataStore.logAnalyticsEvent({
+    await this.analyticsModel.create({
       eventName: 'job_created',
       userId: user?.id,
       metadata: { jobId, title: newJob.title, companyName: newJob.companyName },
-    });
+    }).catch(() => {});
 
-    return newJob;
+    return newJob.toObject ? newJob.toObject() : newJob;
   }
 
   /**
@@ -275,7 +311,7 @@ Return ONLY a JSON object matching this schema:
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-    } catch (e) {}
+    } catch {}
 
     // Fallback extraction
     return {
@@ -284,6 +320,7 @@ Return ONLY a JSON object matching this schema:
       suggestedSalaryRange: '$110,000 - $140,000 USD',
       requiredSkills: ['TypeScript', 'React', 'NestJS', 'MongoDB', 'REST API'],
       preferredSkills: ['Docker', 'RAG Architecture', 'Vector Search', 'CI/CD'],
+      unverifiedFallback: true,
     };
   }
 
@@ -291,16 +328,23 @@ Return ONLY a JSON object matching this schema:
    * Generate Custom Interview Questions for a Candidate
    */
   async generateInterviewQuestionsForCandidate(applicationId: string, user: any) {
-    const app = this.dataStore.applications.get(applicationId);
+    const query: any[] = [{ id: applicationId }];
+    if (isValidObjectId(applicationId)) query.push({ _id: applicationId });
+
+    const app = await this.applicationModel.findOne({ $or: query }).lean();
     if (!app) {
       throw new NotFoundException(`Application ${applicationId} not found`);
     }
 
-    const job = this.dataStore.jobs.get(app.jobId);
+    const jobQuery: any[] = [{ id: app.jobId }];
+    if (isValidObjectId(app.jobId)) jobQuery.push({ _id: app.jobId });
+    const job = await this.jobModel.findOne({ $or: jobQuery }).lean();
+
     const isAdmin = user?.role === 'admin';
     if (!isAdmin && job) {
       const isOwner =
-        job.ownerUserId === user.id ||
+        (job as any).ownerUserId === user.id ||
+        (job as any).creatorUserId === user.id ||
         job.companyId === user.id ||
         (user.companyName && job.companyName?.toLowerCase() === user.companyName.toLowerCase());
       if (!isOwner) {
@@ -308,11 +352,11 @@ Return ONLY a JSON object matching this schema:
       }
     }
 
-    const profile = this.dataStore.profiles.get(app.userId);
+    const profile = await this.profileModel.findOne({ userId: app.userId }).lean();
 
     const prompt = `You are a Lead Hiring Architect interviewing candidate "${app.candidateName}" for the position "${app.jobTitle}" at "${app.companyName}".
-Candidate's verified skills: ${profile?.skills.map((s) => `${s.name} (${s.proficiency}%)`).join(', ') || 'TypeScript, React, Node.js'}.
-Job required skills: ${job?.requiredSkills.join(', ') || 'TypeScript, NestJS, Docker'}.
+Candidate's verified skills: ${profile?.skills?.map((s: any) => `${s.name} (${s.proficiency}%)`).join(', ') || 'TypeScript, React, Node.js'}.
+Job required skills: ${job?.requiredSkills?.join(', ') || 'TypeScript, NestJS, Docker'}.
 
 Generate 4 deep, technical, and behavioral interview questions specifically testing where the candidate has skill gaps or high potential.
 Return ONLY a JSON object:
@@ -333,11 +377,12 @@ Return ONLY a JSON object:
       if (match) {
         return JSON.parse(match[0]);
       }
-    } catch (e) {}
+    } catch {}
 
     return {
       candidateName: app.candidateName,
       jobTitle: app.jobTitle,
+      source: 'CURATED_STANDARD_QUESTION_BANK',
       questions: [
         {
           id: 'q1',

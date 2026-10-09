@@ -6,11 +6,14 @@ export type SkillEvidenceDocument = SkillEvidence & Document;
 
 @Schema({ timestamps: true, collection: 'skills' })
 export class Skill {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, unique: true, trim: true, index: true })
   name: string;
 
-  @Prop({ required: true, unique: true, trim: true, lowercase: true, index: true })
-  slug: string;
+  @Prop({ trim: true, lowercase: true, sparse: true, index: true })
+  slug?: string;
 
   @Prop({ required: true, index: true })
   category: string;
@@ -56,6 +59,9 @@ SkillSchema.index({ category: 1, industryDemandScore: -1 });
 
 @Schema({ timestamps: true, collection: 'skill_evidence' })
 export class SkillEvidence {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   userId: string;
 

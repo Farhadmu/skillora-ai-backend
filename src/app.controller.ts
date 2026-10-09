@@ -1,13 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Res, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+import { Response } from 'express';
 import { AppService } from './app.service';
-import { DataStoreService } from './database/data-store.service';
 
 @Controller('api')
 export class AppController {
   constructor(
     private readonly appService: AppService,
-    private readonly dataStore: DataStoreService,
+    @InjectConnection() private readonly connection: Connection,
     private readonly config: ConfigService,
   ) {}
 
@@ -17,8 +19,8 @@ export class AppController {
   }
 
   @Get('health')
-  async getHealth() {
-    const isMongo = this.dataStore.isMongoConnected;
+  async getHealth(@Res({ passthrough: true }) res: Response) {
+    const isMongo = this.connection.readyState === 1;
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
     const groqKey = this.config.get<string>('GROQ_API_KEY');
     const hasAi = !!(geminiKey || groqKey);
@@ -28,9 +30,10 @@ export class AppController {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 600);
-      const res = await fetch(`${qdrantUrl}/healthz`, { signal: controller.signal });
+      const qdrantRes = await fetch(`${qdrantUrl}/healthz`, { signal: controller.signal });
       clearTimeout(timeoutId);
-      if (res.ok) qdrantStatus = 'healthy';
+      if (qdrantRes.ok) qdrantStatus = 'healthy';
+      else qdrantStatus = 'degraded';
     } catch {
       qdrantStatus = 'offline';
     }
@@ -40,8 +43,13 @@ export class AppController {
         ? 'healthy'
         : 'development_fallback';
 
+    const overallStatus = isMongo ? 'healthy' : 'unhealthy';
+    if (!isMongo) {
+      res.status(HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     return {
-      status: isMongo ? 'healthy' : 'degraded',
+      status: overallStatus,
       api: 'healthy',
       mongodb: isMongo ? 'healthy' : 'disconnected',
       ai: hasAi ? 'healthy' : 'configured_without_keys',

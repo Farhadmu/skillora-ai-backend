@@ -1,27 +1,42 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DataStoreService, ProjectEntity } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
+import { Project, ProjectDocument, ProjectSubmission, ProjectSubmissionDocument } from '../../database/schemas/project.schema';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
+import { SkillEvidence, SkillEvidenceDocument } from '../../database/schemas/skill.schema';
+import { Notification, NotificationDocument } from '../../database/schemas/communication.schema';
+import { AnalyticsEvent, AnalyticsEventDocument } from '../../database/schemas/analytics-audit.schema';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class ProjectsService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(Project.name) private readonly projectModel: Model<ProjectDocument>,
+    @InjectModel(ProjectSubmission.name) private readonly submissionModel: Model<ProjectSubmissionDocument>,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+    @InjectModel(SkillEvidence.name) private readonly evidenceModel: Model<SkillEvidenceDocument>,
+    @InjectModel(Notification.name) private readonly notificationModel: Model<NotificationDocument>,
+    @InjectModel(AnalyticsEvent.name) private readonly analyticsModel: Model<AnalyticsEventDocument>,
     private readonly aiService: AiService,
   ) {}
 
-  getAllProjects(category?: string, difficulty?: string) {
-    let list = Array.from(this.dataStore.projects.values());
+  async getAllProjects(category?: string, difficulty?: string) {
+    const filter: any = {};
     if (category && category !== 'All') {
-      list = list.filter((p) => p.category.toLowerCase().includes(category.toLowerCase()));
+      filter.category = new RegExp(category, 'i');
     }
     if (difficulty && difficulty !== 'All') {
-      list = list.filter((p) => p.difficulty.toLowerCase() === difficulty.toLowerCase());
+      filter.difficulty = new RegExp(`^${difficulty}$`, 'i');
     }
-    return list;
+
+    return this.projectModel.find(filter).lean();
   }
 
-  getProjectById(id: string): ProjectEntity {
-    const project = this.dataStore.projects.get(id);
+  async getProjectById(id: string) {
+    const query: any[] = [{ id }];
+    if (isValidObjectId(id)) query.push({ _id: id });
+
+    const project = await this.projectModel.findOne({ $or: query }).lean();
     if (!project) {
       throw new NotFoundException(`Project ${id} not found`);
     }
@@ -31,14 +46,13 @@ export class ProjectsService {
   /**
    * Recommend projects based on missing learner skills
    */
-  recommendProjects(userId: string) {
-    const profile = this.dataStore.profiles.get(userId);
-    const userSkillNames = new Set(profile?.skills.map((s) => s.name.toLowerCase()) || []);
+  async recommendProjects(userId: string) {
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    const userSkillNames = new Set((profile?.skills || []).map((s: any) => s.name.toLowerCase()));
 
-    const allProjects = Array.from(this.dataStore.projects.values());
-    const scored = allProjects.map((proj) => {
-      // Score higher if project teaches skills the user DOES NOT have yet
-      const missingTargets = proj.targetSkills.filter((s) => !userSkillNames.has(s.toLowerCase()));
+    const allProjects = await this.projectModel.find().lean();
+    const scored = allProjects.map((proj: any) => {
+      const missingTargets = (proj.targetSkills || []).filter((s: string) => !userSkillNames.has(s.toLowerCase()));
       const relevanceScore = missingTargets.length * 20 + (proj.difficulty === 'Intermediate' ? 10 : 5);
       return {
         ...proj,
@@ -57,14 +71,14 @@ export class ProjectsService {
   async reviewCode(code: string, language: string, context?: string, userId?: string) {
     const review = await this.aiService.reviewCode(code, language || 'TypeScript', context);
     if (userId) {
-      this.dataStore.logAnalyticsEvent({
+      await this.analyticsModel.create({
         eventName: 'code_reviewed',
         userId,
         metadata: { language, score: review.score },
-      });
+      }).catch(() => {});
 
       if (review.score >= 75) {
-        const profile = this.dataStore.profiles.get(userId);
+        const profile = await this.profileModel.findOne({ userId });
         if (profile) {
           if (profile.readinessDimensions) {
             profile.readinessDimensions.projects = Math.min(
@@ -72,9 +86,10 @@ export class ProjectsService {
               100,
             );
           }
-          this.dataStore.saveProfile(profile);
+          await profile.save();
 
-          this.dataStore.recordSkillEvidence({
+          await this.evidenceModel.create({
+            id: `evi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             userId,
             skillId: language.toLowerCase().replace(/[^a-z0-9]/g, '-'),
             skillName: language,
@@ -84,7 +99,8 @@ export class ProjectsService {
             verified: true,
           });
 
-          this.dataStore.recordNotification({
+          await this.notificationModel.create({
+            id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             userId,
             title: `Code Review Passed: ${language}`,
             message: `Your code submission passed with a score of ${review.score}%. Project readiness increased!`,
@@ -101,9 +117,9 @@ export class ProjectsService {
    * Submit Project repository, verify evidence and boost readiness
    */
   async submitProject(userId: string, projectId: string, dto: { githubRepoUrl: string; liveDemoUrl?: string; notes?: string }) {
-    const project = this.getProjectById(projectId);
+    const project: any = await this.getProjectById(projectId);
     const submissionId = `sub-${Date.now()}`;
-    const submission = {
+    const submission = await this.submissionModel.create({
       id: submissionId,
       projectId,
       projectTitle: project.title,
@@ -111,14 +127,16 @@ export class ProjectsService {
       githubRepoUrl: dto.githubRepoUrl,
       liveDemoUrl: dto.liveDemoUrl || '',
       notes: dto.notes || '',
-      submittedAt: new Date().toISOString(),
+      submittedAt: new Date(),
       status: 'approved',
-    };
+    });
 
-    const profile = this.dataStore.profiles.get(userId);
+    const profile = await this.profileModel.findOne({ userId });
     if (profile) {
-      for (const skill of project.targetSkills) {
-        this.dataStore.recordSkillEvidence({
+      const skills = profile.skills || [];
+      for (const skill of project.targetSkills || []) {
+        await this.evidenceModel.create({
+          id: `evi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           userId,
           skillId: skill.toLowerCase().replace(/[^a-z0-9]/g, '-'),
           skillName: skill,
@@ -129,31 +147,33 @@ export class ProjectsService {
           verified: true,
         });
 
-        const idx = profile.skills.findIndex((s) => s.name.toLowerCase() === skill.toLowerCase());
+        const idx = skills.findIndex((s: any) => s.name.toLowerCase() === skill.toLowerCase());
         if (idx >= 0) {
-          profile.skills[idx].proficiency = Math.max(profile.skills[idx].proficiency, 80);
-          profile.skills[idx].verified = true;
-          profile.skills[idx].evidence.push(`Project: ${project.title}`);
+          skills[idx].proficiency = Math.max(skills[idx].proficiency, 80);
+          skills[idx].verified = true;
+          skills[idx].evidence = Array.from(new Set([...(skills[idx].evidence || []), `Project: ${project.title}`]));
         } else {
-          profile.skills.push({
+          skills.push({
             name: skill,
-            category: project.category,
+            category: project.category || 'General',
             proficiency: 80,
             confidence: 80,
             verified: true,
             evidence: [`Project: ${project.title}`],
             source: 'PROJECT-VERIFIED',
-          });
+          } as any);
         }
       }
 
+      profile.skills = skills;
       if (profile.readinessDimensions) {
         profile.readinessDimensions.projects = Math.min(profile.readinessDimensions.projects + 5, 100);
       }
-      this.dataStore.saveProfile(profile);
+      await profile.save();
     }
 
-    this.dataStore.recordNotification({
+    await this.notificationModel.create({
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       userId,
       title: `Project Verified: ${project.title}`,
       message: `Your project submission has been verified! Skills and evidence updated.`,
@@ -163,9 +183,8 @@ export class ProjectsService {
 
     return {
       success: true,
-      submission,
+      submission: submission.toObject ? submission.toObject() : submission,
       message: `Project ${project.title} submitted and verified successfully!`,
     };
   }
 }
-

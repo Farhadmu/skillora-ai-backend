@@ -10,9 +10,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { DataStoreService, UserEntity } from '../../database/data-store.service';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
 import {
   RegisterDto,
   LoginDto,
@@ -23,7 +27,6 @@ import {
   ChangePasswordDto,
 } from './dto/auth.dto';
 import { Role } from '../../common/enums/roles.enum';
-
 import { EmailService } from '../../common/services/email.service';
 
 interface RateLimitRecord {
@@ -39,8 +42,10 @@ export class AuthService {
   private readonly resendRateLimits: Map<string, number> = new Map();
 
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {}
 
@@ -53,9 +58,7 @@ export class AuthService {
     }
 
     const emailKey = dto.email.toLowerCase().trim();
-    const existing = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === emailKey,
-    );
+    const existing = await this.userModel.findOne({ email: emailKey }).lean();
     if (existing) {
       throw new ConflictException('An account with this email already exists.');
     }
@@ -66,7 +69,7 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const userId = `usr-${Date.now()}`;
+    const userId = `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const role = dto.role || Role.LEARNER;
 
     // 3. Generate secure verification token (SHA-256 hashed in database)
@@ -75,47 +78,46 @@ export class AuthService {
       .createHash('sha256')
       .update(rawVerificationToken)
       .digest('hex');
-    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    const newUser: UserEntity = {
+    const headline =
+      dto.headline?.trim() ||
+      (role === Role.LEARNER
+        ? 'Skillora AI Learner'
+        : role === Role.EDUCATOR
+        ? 'Skillora Educator'
+        : 'Hiring Partner at Skillora');
+
+    const createdUser = await this.userModel.create({
       id: userId,
       email: emailKey,
       passwordHash,
       name: dto.name.trim(),
       role,
-      headline:
-        dto.headline?.trim() ||
-        (role === Role.LEARNER
-          ? 'Skillora AI Learner'
-          : role === Role.EDUCATOR
-          ? 'Skillora Educator'
-          : 'Hiring Partner at Skillora'),
-      createdAt: new Date().toISOString(),
+      headline,
       isVerified: false,
       verificationTokenHash,
       verificationTokenExpires,
-      // Role-specific onboarding fields
-      country: dto.country?.trim(),
-      educationLevel: dto.educationLevel?.trim(),
-      careerInterest: dto.careerInterest?.trim(),
-      institution: dto.institution?.trim(),
-      teachingArea: dto.teachingArea?.trim(),
-      experienceYears: dto.experienceYears,
-      companyName: dto.companyName?.trim(),
-      companySize: dto.companySize?.trim(),
-      industry: dto.industry?.trim(),
-      jobTitle: dto.jobTitle?.trim(),
-    };
-
-    this.dataStore.saveUser(newUser);
+      country: dto.country?.trim() || '',
+      educationLevel: dto.educationLevel?.trim() || '',
+      careerInterest: dto.careerInterest?.trim() || '',
+      institution: dto.institution?.trim() || '',
+      teachingArea: dto.teachingArea?.trim() || '',
+      experienceYears: dto.experienceYears ? Number(dto.experienceYears) : 0,
+      companyName: dto.companyName?.trim() || '',
+      companySize: dto.companySize?.trim() || '',
+      industry: dto.industry?.trim() || '',
+      jobTitle: dto.jobTitle?.trim() || '',
+      status: 'active',
+    });
 
     // 4. Initialize default learner profile if LEARNER
     if (role === Role.LEARNER) {
-      this.dataStore.saveProfile({
+      await this.profileModel.create({
         userId,
-        name: newUser.name,
-        email: newUser.email,
-        headline: newUser.headline || 'Skillora Learner',
+        name: createdUser.name,
+        email: createdUser.email,
+        headline,
         bio: 'Welcome to my Skillora AI verified workforce intelligence profile.',
         degree: dto.educationLevel || '',
         institution: dto.institution || '',
@@ -139,7 +141,10 @@ export class AuthService {
       });
     }
 
-    const tokens = await this.generateTokens(newUser);
+    const tokens = await this.generateTokens(createdUser);
+    createdUser.refreshToken = tokens.refreshToken;
+    await createdUser.save();
+
     const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
     const verificationUrl = `${appUrl}/verify-email?token=${rawVerificationToken}`;
 
@@ -151,7 +156,7 @@ export class AuthService {
 
     return {
       message: dispatch.dispatchNotice,
-      user: this.sanitizeUser(newUser),
+      user: this.sanitizeUser(createdUser.toObject ? createdUser.toObject() : createdUser),
       tokens,
     };
   }
@@ -163,10 +168,7 @@ export class AuthService {
 
     const incomingHash = crypto.createHash('sha256').update(dto.token.trim()).digest('hex');
 
-    const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.verificationTokenHash === incomingHash,
-    );
-
+    const user = await this.userModel.findOne({ verificationTokenHash: incomingHash });
     if (!user) {
       throw new BadRequestException(
         'Invalid or expired verification token. If your account is already verified, you can log in directly.',
@@ -179,22 +181,20 @@ export class AuthService {
       );
     }
 
-    // Mark as verified and invalidate token
     user.isVerified = true;
-    user.verificationTokenHash = null;
-    user.verificationTokenExpires = null;
+    user.verificationTokenHash = undefined;
+    user.verificationTokenExpires = undefined;
 
     const tokens = await this.generateTokens(user);
     user.refreshToken = tokens.refreshToken;
-
-    this.dataStore.saveUser(user);
+    await user.save();
 
     this.logger.log(`[AUTH] Account successfully verified: ${user.email} (${user.role})`);
 
     return {
       success: true,
       message: 'Email address verified successfully. Welcome to Skillora AI!',
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(user.toObject ? user.toObject() : user),
       tokens,
     };
   }
@@ -213,11 +213,7 @@ export class AuthService {
       );
     }
 
-    const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === emailKey,
-    );
-
-    // If already verified or doesn't exist, return clean message to prevent enumeration
+    const user = await this.userModel.findOne({ email: emailKey });
     if (!user) {
       return {
         success: true,
@@ -233,17 +229,15 @@ export class AuthService {
       };
     }
 
-    // Generate new token
     const rawVerificationToken = crypto.randomBytes(32).toString('hex');
     user.verificationTokenHash = crypto
       .createHash('sha256')
       .update(rawVerificationToken)
       .digest('hex');
-    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     this.resendRateLimits.set(emailKey, now);
-
-    this.dataStore.saveUser(user);
+    await user.save();
 
     const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
     const verificationUrl = `${appUrl}/verify-email?token=${rawVerificationToken}`;
@@ -273,9 +267,7 @@ export class AuthService {
       }
     }
 
-    const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === emailKey,
-    );
+    const user = await this.userModel.findOne({ email: emailKey });
     if (!user) {
       this.recordFailedAttempt(emailKey);
       throw new UnauthorizedException('Invalid email or password.');
@@ -287,25 +279,23 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    // Successful login: clear failed attempts
     this.failedLoginAttempts.delete(emailKey);
 
     const tokens = await this.generateTokens(user);
     user.refreshToken = tokens.refreshToken;
-    this.dataStore.saveUser(user);
+    user.lastLoginAt = new Date();
+    await user.save();
 
     return {
       message: 'Login successful.',
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(user.toObject ? user.toObject() : user),
       tokens,
     };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
     const emailKey = dto.email.toLowerCase().trim();
-    const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.email.toLowerCase() === emailKey,
-    );
+    const user = await this.userModel.findOne({ email: emailKey });
 
     if (!user) {
       return {
@@ -319,9 +309,9 @@ export class AuthService {
       .createHash('sha256')
       .update(rawResetToken)
       .digest('hex');
-    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    this.dataStore.saveUser(user);
+    await user.save();
 
     const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
     const resetUrl = `${appUrl}/reset-password?token=${rawResetToken}`;
@@ -343,9 +333,7 @@ export class AuthService {
     }
 
     const incomingHash = crypto.createHash('sha256').update(dto.token.trim()).digest('hex');
-    const user = Array.from(this.dataStore.users.values()).find(
-      (u) => u.passwordResetTokenHash === incomingHash,
-    );
+    const user = await this.userModel.findOne({ passwordResetTokenHash: incomingHash });
 
     if (!user) {
       throw new BadRequestException('Invalid or expired password reset token.');
@@ -356,11 +344,11 @@ export class AuthService {
     }
 
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    user.passwordResetTokenHash = null;
-    user.passwordResetExpires = null;
-    user.refreshToken = null; // Invalidate current session
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpires = undefined;
+    user.refreshToken = undefined; // Invalidate all active sessions
 
-    this.dataStore.saveUser(user);
+    await user.save();
 
     this.logger.log(`[AUTH] Password successfully reset for user ${user.email}`);
 
@@ -371,7 +359,10 @@ export class AuthService {
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = this.dataStore.users.get(userId);
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    const user = await this.userModel.findOne({ $or: query });
     if (!user) {
       throw new NotFoundException('User not found.');
     }
@@ -386,46 +377,65 @@ export class AuthService {
     }
 
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    this.dataStore.saveUser(user);
+    user.refreshToken = undefined;
+    await user.save();
 
     return {
       success: true,
-      message: 'Password has been updated successfully.',
+      message: 'Password has been updated successfully. Active sessions revoked.',
     };
   }
 
   async logout(userId: string) {
-    const user = this.dataStore.users.get(userId);
-    if (user) {
-      user.refreshToken = undefined;
-      this.dataStore.saveUser(user);
-    }
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    await this.userModel.updateOne({ $or: query }, { $set: { refreshToken: null, refreshTokenHash: null } });
     return { success: true, message: 'Logged out successfully.' };
   }
 
   async logoutAll(userId: string) {
-    const user = this.dataStore.users.get(userId);
-    if (user) {
-      user.refreshToken = undefined;
-      this.dataStore.saveUser(user);
-    }
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    await this.userModel.updateOne({ $or: query }, { $set: { refreshToken: null, refreshTokenHash: null } });
     return { success: true, message: 'All active sessions have been invalidated.' };
   }
 
   async refreshToken(token: string) {
+    const refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
     try {
       const payload = this.jwtService.verify(token, {
-        secret: process.env.JWT_REFRESH_SECRET || 'skillora_super_secret_refresh_key_2026',
+        secret: refreshSecret,
       });
-      const user = this.dataStore.users.get(payload.sub);
+
+      const query: any[] = [{ id: payload.sub }];
+      if (isValidObjectId(payload.sub)) query.push({ _id: payload.sub });
+
+      const user = await this.userModel.findOne({ $or: query });
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
+      // Session revocation check: active session requires a valid registered refresh token
+      if (!user.refreshToken) {
+        throw new UnauthorizedException('Session has been revoked or logged out. Please log in again.');
+      }
+
+      // Token rotation check: verify incoming token matches the one in database
+      if (user.refreshToken !== token) {
+        // Reuse detection: revoke all sessions immediately
+        user.refreshToken = undefined;
+        await user.save();
+        throw new UnauthorizedException('Refresh token reuse detected. Session revoked.');
+      }
+
       const tokens = await this.generateTokens(user);
       user.refreshToken = tokens.refreshToken;
+      await user.save();
+
       return {
-        user: this.sanitizeUser(user),
+        user: this.sanitizeUser(user.toObject ? user.toObject() : user),
         tokens,
       };
     } catch {
@@ -434,11 +444,17 @@ export class AuthService {
   }
 
   async getMe(userId: string) {
-    const user = this.dataStore.users.get(userId);
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    const user = await this.userModel.findOne({ $or: query }).lean();
     if (!user) {
       throw new NotFoundException('User profile not found');
     }
-    const profile = this.dataStore.profiles.get(userId);
+
+    const actualUserId = user.id || (user as any)._id?.toString();
+    const profile = await this.profileModel.findOne({ userId: actualUserId }).lean();
+
     return {
       user: this.sanitizeUser(user),
       profile,
@@ -460,28 +476,45 @@ export class AuthService {
     }
   }
 
-  private async generateTokens(user: UserEntity) {
+  private async generateTokens(user: any) {
+    const userId = user.id || user._id?.toString();
     const payload = {
-      sub: user.id,
+      sub: userId,
       email: user.email,
       role: user.role,
       name: user.name,
       isVerified: user.isVerified ?? false,
     };
+
+    const jwtSecret = this.configService.getOrThrow<string>('JWT_SECRET');
+    const refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET || 'skillora_super_secret_access_key_2026',
+      secret: jwtSecret,
       expiresIn: '24h',
     });
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'skillora_super_secret_refresh_key_2026',
-      expiresIn: '7d',
-    });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, jti: crypto.randomUUID() },
+      {
+        secret: refreshSecret,
+        expiresIn: '7d',
+      },
+    );
     return { accessToken, refreshToken };
   }
 
-  private sanitizeUser(user: UserEntity) {
-    const { passwordHash, refreshToken, verificationTokenHash, passwordResetTokenHash, ...safe } =
-      user;
-    return safe;
+  private sanitizeUser(user: any) {
+    const {
+      passwordHash,
+      refreshToken,
+      refreshTokenHash,
+      verificationTokenHash,
+      passwordResetTokenHash,
+      ...safe
+    } = user;
+    return {
+      ...safe,
+      id: user.id || user._id?.toString(),
+    };
   }
 }

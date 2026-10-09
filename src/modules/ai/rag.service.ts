@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { randomUUID } from 'node:crypto';
 import { AiService } from './ai.service';
 
 export interface DocumentChunk {
@@ -18,12 +19,19 @@ export interface DocumentChunk {
   };
 }
 
+export interface RetrievalResult {
+  chunk: DocumentChunk;
+  score: number;
+  method: 'QDRANT_VECTOR' | 'KEYWORD_CATALOG';
+}
+
 @Injectable()
 export class RagService implements OnModuleInit {
   private readonly logger = new Logger(RagService.name);
   private qdrantClient: QdrantClient | null = null;
   private isQdrantOnline = false;
   private readonly collectionName = 'skillora_knowledge';
+  private readonly vectorDimension = 768;
   private knowledgeBase: DocumentChunk[] = [];
 
   constructor(private readonly aiService: AiService) {
@@ -35,7 +43,7 @@ export class RagService implements OnModuleInit {
   }
 
   /**
-   * Initialize and test connection to Qdrant Vector Engine
+   * Initialize connection to Qdrant Vector Engine and ensure collection exists
    */
   async initQdrant() {
     const qdrantUrl = process.env.QDRANT_URL || 'http://localhost:6333';
@@ -48,26 +56,179 @@ export class RagService implements OnModuleInit {
         checkCompatibility: false,
       });
 
-      const collections = await this.qdrantClient.getCollections();
+      // Probe Qdrant connectivity
+      await this.qdrantClient.getCollections();
       this.isQdrantOnline = true;
-      this.logger.log(`Qdrant Vector Database online at ${qdrantUrl} (${collections.collections.length} collections)`);
+      this.logger.log(`Qdrant Vector Database reachable at ${qdrantUrl}`);
+
+      // Ensure target collection exists with 768-dim Cosine configuration
+      await this.ensureCollection();
     } catch (err: any) {
       this.isQdrantOnline = false;
-      this.logger.warn(`Qdrant Vector Database unreachable at ${qdrantUrl}: ${err.message}. Operating in verified local catalog mode.`);
+      this.logger.warn(
+        `Qdrant Vector Database offline at ${qdrantUrl}: ${err.message}. Operating in verified local catalog fallback mode.`,
+      );
     }
   }
 
-  async checkHealth(): Promise<{ status: 'healthy' | 'offline'; error?: string }> {
-    if (!this.qdrantClient) {
-      return { status: 'offline', error: 'Qdrant client not initialized' };
+  /**
+   * Ensure collection exists in Qdrant with 768 dimensions and Cosine distance
+   */
+  private async ensureCollection() {
+    if (!this.qdrantClient || !this.isQdrantOnline) return;
+
+    try {
+      const existsRes = await this.qdrantClient.collectionExists(this.collectionName);
+      if (!existsRes.exists) {
+        await this.qdrantClient.createCollection(this.collectionName, {
+          vectors: {
+            size: this.vectorDimension,
+            distance: 'Cosine',
+          },
+        });
+        this.logger.log(
+          `Created Qdrant collection "${this.collectionName}" (dimension: ${this.vectorDimension}, metric: Cosine)`,
+        );
+        // Sync default baseline catalog chunks into Qdrant
+        await this.syncKnowledgeBaseToQdrant();
+      } else {
+        this.logger.log(`Qdrant collection "${this.collectionName}" already exists.`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to verify or create Qdrant collection: ${err.message}`);
     }
+  }
+
+  /**
+   * Sync catalog chunks to Qdrant vector collection
+   */
+  async syncKnowledgeBaseToQdrant() {
+    if (!this.qdrantClient || !this.isQdrantOnline) return;
+
+    try {
+      const points = [];
+      for (const chunk of this.knowledgeBase) {
+        const vector = await this.getEmbedding(`${chunk.topic} ${chunk.content}`);
+        points.push({
+          id: randomUUID(),
+          vector,
+          payload: {
+            chunkId: chunk.id,
+            source: chunk.source,
+            topic: chunk.topic,
+            difficulty: chunk.difficulty,
+            trustLevel: chunk.trustLevel,
+            content: chunk.content,
+            metadata: chunk.metadata,
+          },
+        });
+      }
+
+      await this.qdrantClient.upsert(this.collectionName, {
+        wait: true,
+        points,
+      });
+
+      this.logger.log(`Indexed ${points.length} knowledge chunks into Qdrant collection "${this.collectionName}".`);
+    } catch (err: any) {
+      this.logger.warn(`Failed to sync knowledge chunks to Qdrant: ${err.message}`);
+    }
+  }
+
+  /**
+   * Generates a 768-dimensional dense vector embedding:
+   * Uses Gemini text-embedding-004 if configured, otherwise deterministic normalized 768-dim projection
+   */
+  async getEmbedding(text: string): Promise<number[]> {
+    const aiEmbedding = await this.aiService.generateEmbedding(text);
+    if (aiEmbedding && aiEmbedding.length === this.vectorDimension) {
+      return aiEmbedding;
+    }
+    return this.generateDeterministicEmbedding(text);
+  }
+
+  /**
+   * Deterministic 768-dimensional normalized unit vector projection.
+   * Guarantees non-zero cosine similarity for identical/overlapping text in offline/test environments.
+   */
+  generateDeterministicEmbedding(text: string): number[] {
+    const dim = this.vectorDimension;
+    const vector = new Array(dim).fill(0);
+    const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return vector;
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      let hash = 0;
+      for (let j = 0; j < word.length; j++) {
+        hash = (hash * 31 + word.charCodeAt(j)) >>> 0;
+      }
+      const index = hash % dim;
+      const weight = 1.0 / (1.0 + Math.log(i + 1));
+      vector[index] += weight;
+      vector[(index * 7 + 13) % dim] += weight * 0.5;
+    }
+
+    // L2 Normalize to unit sphere for Cosine distance
+    let norm = 0;
+    for (let i = 0; i < dim; i++) {
+      norm += vector[i] * vector[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm > 0) {
+      for (let i = 0; i < dim; i++) {
+        vector[i] = vector[i] / norm;
+      }
+    }
+    return vector;
+  }
+
+  /**
+   * Health status inspection for vector database
+   */
+  async checkHealth(): Promise<{
+    status: 'healthy' | 'offline';
+    vectorEngine: string;
+    collection: string;
+    vectorDimension: number;
+    distanceMetric: string;
+    online: boolean;
+    error?: string;
+  }> {
+    if (!this.qdrantClient) {
+      return {
+        status: 'offline',
+        vectorEngine: 'Qdrant REST Engine',
+        collection: this.collectionName,
+        vectorDimension: this.vectorDimension,
+        distanceMetric: 'Cosine',
+        online: false,
+        error: 'Qdrant client not initialized',
+      };
+    }
+
     try {
       await this.qdrantClient.getCollections();
       this.isQdrantOnline = true;
-      return { status: 'healthy' };
+      return {
+        status: 'healthy',
+        vectorEngine: 'Qdrant REST Engine',
+        collection: this.collectionName,
+        vectorDimension: this.vectorDimension,
+        distanceMetric: 'Cosine',
+        online: true,
+      };
     } catch (err: any) {
       this.isQdrantOnline = false;
-      return { status: 'offline', error: err.message };
+      return {
+        status: 'offline',
+        vectorEngine: 'Qdrant REST Engine',
+        collection: this.collectionName,
+        vectorDimension: this.vectorDimension,
+        distanceMetric: 'Cosine',
+        online: false,
+        error: err.message,
+      };
     }
   }
 
@@ -126,9 +287,9 @@ export class RagService implements OnModuleInit {
   }
 
   /**
-   * Search knowledge base with grounded retrieval
+   * Grounded lexical keyword retrieval (catalog fallback)
    */
-  async retrieve(query: string, limit = 3): Promise<{ chunk: DocumentChunk; score: number }[]> {
+  private keywordRetrieve(query: string, limit = 3): { chunk: DocumentChunk; score: number }[] {
     const terms = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
     if (terms.length === 0) return [];
 
@@ -151,6 +312,49 @@ export class RagService implements OnModuleInit {
   }
 
   /**
+   * Semantic vector retrieval with Qdrant vector engine and catalog fallback
+   */
+  async retrieve(query: string, limit = 3): Promise<RetrievalResult[]> {
+    // 1. If Qdrant is online, execute dense vector semantic search
+    if (this.isQdrantOnline && this.qdrantClient) {
+      try {
+        const queryVector = await this.getEmbedding(query);
+        const searchRes = await this.qdrantClient.query(this.collectionName, {
+          query: queryVector,
+          limit,
+          with_payload: true,
+        });
+
+        if (searchRes?.points && searchRes.points.length > 0) {
+          return searchRes.points.map((pt: any) => ({
+            chunk: {
+              id: pt.payload?.chunkId || String(pt.id),
+              source: pt.payload?.source || 'Skillora Documentation',
+              topic: pt.payload?.topic || 'Technical Topic',
+              difficulty: pt.payload?.difficulty || 'Intermediate',
+              trustLevel: pt.payload?.trustLevel || 'VERIFIED',
+              content: pt.payload?.content || '',
+              metadata: pt.payload?.metadata || {},
+            },
+            score: typeof pt.score === 'number' ? pt.score : 0.85,
+            method: 'QDRANT_VECTOR',
+          }));
+        }
+      } catch (err: any) {
+        this.logger.warn(`Qdrant vector query failed: ${err.message}. Falling back to grounded catalog search.`);
+      }
+    }
+
+    // 2. Truthful catalog lexical fallback
+    const keywordMatches = this.keywordRetrieve(query, limit);
+    return keywordMatches.map((m) => ({
+      chunk: m.chunk,
+      score: m.score,
+      method: 'KEYWORD_CATALOG',
+    }));
+  }
+
+  /**
    * Grounded Question Answering with Verifiable Citations
    */
   async answerWithGrounding(question: string): Promise<{
@@ -163,23 +367,33 @@ export class RagService implements OnModuleInit {
       excerpt: string;
     }>;
     confidenceScore: number;
-    vectorStoreStatus: 'QDRANT_LIVE' | 'CATALOG_FALLBACK';
+    vectorStoreStatus: 'QDRANT_LIVE' | 'CATALOG_FALLBACK' | 'QDRANT_OFFLINE';
   }> {
     const results = await this.retrieve(question, 3);
+
+    const actualMethod = results[0]?.method;
+    const vectorStoreStatus =
+      actualMethod === 'QDRANT_VECTOR'
+        ? 'QDRANT_LIVE'
+        : this.isQdrantOnline
+          ? 'CATALOG_FALLBACK'
+          : 'QDRANT_OFFLINE';
 
     if (results.length === 0) {
       return {
         answer: 'I could not locate verified technical documentation matching this specific query in the Skillora Knowledge Base.',
         citations: [],
         confidenceScore: 0,
-        vectorStoreStatus: this.isQdrantOnline ? 'QDRANT_LIVE' : 'CATALOG_FALLBACK',
+        vectorStoreStatus,
       };
     }
 
     const relevantChunks = results.map((r) => r.chunk);
     const topScore = results[0]?.score || 0;
-    // Calculated deterministically based on keyword density and chunk match strength
-    const calculatedConfidence = Math.min(Math.round((topScore / 10) * 85), 98);
+    const calculatedConfidence =
+      actualMethod === 'QDRANT_VECTOR'
+        ? Math.min(Math.round(topScore * 100), 99)
+        : Math.min(Math.round((topScore / 10) * 85), 95);
 
     const contextText = relevantChunks
       .map((c) => `[Source: "${c.source}", ID: ${c.id}]\n${c.content}`)
@@ -194,7 +408,13 @@ ${contextText}
 
 Question: ${question}`;
 
-    const answer = await this.aiService.generateText(prompt);
+    let answer: string;
+    try {
+      answer = await this.aiService.generateText(prompt);
+    } catch {
+      // If AI text generation is offline, provide grounded excerpt directly without hallucination
+      answer = `Based on verified reference [${relevantChunks[0].source}]: ${relevantChunks[0].content}`;
+    }
 
     const citations = relevantChunks.map((c) => ({
       source: c.source,
@@ -208,12 +428,12 @@ Question: ${question}`;
       answer,
       citations,
       confidenceScore: calculatedConfidence,
-      vectorStoreStatus: this.isQdrantOnline ? 'QDRANT_LIVE' : 'CATALOG_FALLBACK',
+      vectorStoreStatus,
     };
   }
 
   /**
-   * Ingest new technical document into knowledge base
+   * Ingest new technical document into knowledge base and Qdrant
    */
   async ingestDocument(doc: {
     source: string;
@@ -222,8 +442,10 @@ Question: ${question}`;
     content: string;
     author?: string;
   }): Promise<DocumentChunk> {
+    const chunkId = `chunk-${Date.now()}`;
+    const pointId = randomUUID();
     const chunk: DocumentChunk = {
-      id: `chunk-${Date.now()}`,
+      id: chunkId,
       source: doc.source,
       topic: doc.topic,
       difficulty: doc.difficulty,
@@ -236,6 +458,34 @@ Question: ${question}`;
       },
     };
     this.knowledgeBase.push(chunk);
+
+    if (this.isQdrantOnline && this.qdrantClient) {
+      try {
+        const vector = await this.getEmbedding(`${chunk.topic} ${chunk.content}`);
+        await this.qdrantClient.upsert(this.collectionName, {
+          wait: true,
+          points: [
+            {
+              id: pointId,
+              vector,
+              payload: {
+                chunkId: chunk.id,
+                source: chunk.source,
+                topic: chunk.topic,
+                difficulty: chunk.difficulty,
+                trustLevel: chunk.trustLevel,
+                content: chunk.content,
+                metadata: chunk.metadata,
+              },
+            },
+          ],
+        });
+        this.logger.log(`Ingested document "${doc.topic}" into Qdrant collection "${this.collectionName}".`);
+      } catch (err: any) {
+        this.logger.warn(`Failed to upsert document chunk into Qdrant: ${err.message}`);
+      }
+    }
+
     return chunk;
   }
 }

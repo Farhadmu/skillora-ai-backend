@@ -1,76 +1,106 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection, isValidObjectId } from 'mongoose';
+import { User, UserDocument } from '../../database/schemas/user.schema';
+import { Job, JobDocument, JobApplication, JobApplicationDocument } from '../../database/schemas/job.schema';
+import { Skill, SkillDocument, SkillEvidence, SkillEvidenceDocument } from '../../database/schemas/skill.schema';
+import { Assessment, AssessmentDocument } from '../../database/schemas/assessment.schema';
+import { AIUsage, AIUsageDocument, AuditLog, AuditLogDocument } from '../../database/schemas/analytics-audit.schema';
 import { AiService } from '../ai/ai.service';
 import { Role } from '../../common/enums/roles.enum';
 
 @Injectable()
 export class AdminService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
+    @InjectModel(JobApplication.name) private readonly appModel: Model<JobApplicationDocument>,
+    @InjectModel(Skill.name) private readonly skillModel: Model<SkillDocument>,
+    @InjectModel(Assessment.name) private readonly assessmentModel: Model<AssessmentDocument>,
+    @InjectModel(SkillEvidence.name) private readonly evidenceModel: Model<SkillEvidenceDocument>,
+    @InjectModel(AIUsage.name) private readonly aiUsageModel: Model<AIUsageDocument>,
+    @InjectModel(AuditLog.name) private readonly auditModel: Model<AuditLogDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private readonly aiService: AiService,
   ) {}
 
-  getPlatformStats() {
-    const users = Array.from(this.dataStore.users.values());
-    const jobs = Array.from(this.dataStore.jobs.values());
-    const applications = Array.from(this.dataStore.applications.values());
-    const skills = Array.from(this.dataStore.skills.values());
-    const assessments = Array.from(this.dataStore.assessments.values());
+  async getPlatformStats() {
+    const [
+      totalUsers,
+      learnersCount,
+      educatorsCount,
+      employersCount,
+      totalJobs,
+      totalApplications,
+      totalSkillsStandardized,
+      totalAssessments,
+      verifiedSkillsAwarded,
+      aiUsages,
+      auditLogs,
+    ] = await Promise.all([
+      this.userModel.countDocuments(),
+      this.userModel.countDocuments({ role: Role.LEARNER }),
+      this.userModel.countDocuments({ role: Role.EDUCATOR }),
+      this.userModel.countDocuments({ role: Role.EMPLOYER }),
+      this.jobModel.countDocuments(),
+      this.appModel.countDocuments(),
+      this.skillModel.countDocuments(),
+      this.assessmentModel.countDocuments(),
+      this.evidenceModel.countDocuments({ verified: true }),
+      this.aiUsageModel.find().sort({ createdAt: -1 }).limit(100).lean(),
+      this.auditModel.find().sort({ createdAt: -1 }).limit(20).lean(),
+    ]);
 
-    const verifiedEvidences = Array.from(this.dataStore.skillEvidences.values()).filter((e) => e.verified);
-    const aiUsages = this.dataStore.aiUsages || [];
-    const totalTokens = aiUsages.reduce((acc, u) => acc + (u.tokens || 0), 0);
+    const totalTokens = aiUsages.reduce((acc: number, u: any) => acc + (u.tokens || 0), 0);
     const avgLatency =
       aiUsages.length > 0
-        ? Math.round(aiUsages.reduce((acc, u) => acc + (u.latencyMs || 0), 0) / aiUsages.length)
+        ? Math.round(aiUsages.reduce((acc: number, u: any) => acc + (u.latencyMs || 0), 0) / aiUsages.length)
         : 0;
+
+    const isMongo = this.connection.readyState === 1;
 
     return {
       overview: {
-        totalUsers: users.length,
-        learnersCount: users.filter((u) => u.role === 'LEARNER').length,
-        educatorsCount: users.filter((u) => u.role === 'EDUCATOR').length,
-        employersCount: users.filter((u) => u.role === 'EMPLOYER').length,
-        totalJobs: jobs.length,
-        totalApplications: applications.length,
-        totalSkillsStandardized: skills.length,
-        totalAssessments: assessments.length,
-        verifiedSkillsAwarded: verifiedEvidences.length,
+        totalUsers,
+        learnersCount,
+        educatorsCount,
+        employersCount,
+        totalJobs,
+        totalApplications,
+        totalSkillsStandardized,
+        totalAssessments,
+        verifiedSkillsAwarded,
       },
       aiGovernance: {
         totalInferenceRequests: aiUsages.length,
         estimatedTokensUsed: totalTokens,
         averageLatencyMs: avgLatency,
-        fallbackEngineHitRatio:
-          aiUsages.length > 0
-            ? `${Math.round((aiUsages.filter((u) => u.isFallback).length / aiUsages.length) * 100)}%`
-            : '0%',
         activeModels: [
           'gemini-1.5-flash',
-          'gemini-2.0-flash',
           'llama-3.3-70b-versatile',
-          'skillora-semantic-heuristics-v2',
+          'openrouter-free-cascade',
         ],
         costEstimateUsd: '$0.00 (Zero-Cost Free Provider Cascade)',
       },
       systemHealth: {
         apiStatus: 'HEALTHY',
-        databaseStatus: this.dataStore.isMongoConnected ? 'CONNECTED' : 'PERSISTENT_FILE_BACKED',
-        vectorDbStatus: 'ACTIVE',
+        databaseStatus: isMongo ? 'CONNECTED_MONGODB' : 'DISCONNECTED',
         uptimeSeconds: Math.round(process.uptime()),
         memoryUsageMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
       },
-      auditLogs: this.dataStore.auditLogs.slice(-20).reverse(),
+      auditLogs,
     };
   }
 
-  getUsersList() {
-    return Array.from(this.dataStore.users.values()).map((u) => ({
-      id: u.id,
+  async getUsersList() {
+    const users = await this.userModel.find().lean();
+    return users.map((u: any) => ({
+      id: u.id || u._id.toString(),
       name: u.name,
       email: u.email,
       role: u.role,
       headline: u.headline,
+      status: u.status || 'active',
       createdAt: u.createdAt,
     }));
   }
@@ -83,28 +113,32 @@ export class AdminService {
     return this.aiService.testCascade(prompt);
   }
 
-  updateUserRole(userId: string, role: Role) {
-    const user = this.dataStore.users.get(userId);
+  async updateUserRole(userId: string, role: Role) {
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    const user = await this.userModel.findOne({ $or: query });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
+    const previousRole = user.role;
     user.role = role;
-    this.dataStore.saveUser(user);
+    await user.save();
 
-    this.dataStore.logAudit({
+    await this.auditModel.create({
       action: 'USER_ROLE_UPDATED',
       resourceType: 'user',
       resourceId: userId,
       userRole: role,
-      details: { previousRole: user.role, newRole: role, targetUser: user.email },
-    });
+      details: { previousRole, newRole: role, targetUser: user.email },
+    }).catch(() => {});
 
     return {
       success: true,
       message: `User ${user.name} role updated to ${role}`,
       user: {
-        id: user.id,
+        id: user.id || (user as any)._id?.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
@@ -112,33 +146,35 @@ export class AdminService {
     };
   }
 
-  updateUserStatus(userId: string, status: string) {
-    const user = this.dataStore.users.get(userId);
+  async updateUserStatus(userId: string, status: string) {
+    const query: any[] = [{ id: userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    const user = await this.userModel.findOne({ $or: query });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    (user as any).status = status;
-    this.dataStore.saveUser(user);
+    user.status = status;
+    await user.save();
 
-    this.dataStore.logAudit({
+    await this.auditModel.create({
       action: 'USER_STATUS_UPDATED',
       resourceType: 'user',
       resourceId: userId,
       details: { newStatus: status, targetUser: user.email },
-    });
+    }).catch(() => {});
 
     return {
       success: true,
       message: `User ${user.email} status updated to ${status}`,
       user: {
-        id: user.id,
+        id: user.id || (user as any)._id?.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
-        status: (user as any).status,
+        status: user.status,
       },
     };
   }
 }
-

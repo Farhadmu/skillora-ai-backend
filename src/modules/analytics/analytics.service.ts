@@ -1,17 +1,27 @@
 import { Injectable } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
+import { AssessmentAttempt, AssessmentAttemptDocument } from '../../database/schemas/assessment.schema';
+import { Job, JobDocument, JobApplication, JobApplicationDocument } from '../../database/schemas/job.schema';
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly dataStore: DataStoreService) {}
+  constructor(
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+    @InjectModel(AssessmentAttempt.name) private readonly attemptModel: Model<AssessmentAttemptDocument>,
+    @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
+    @InjectModel(JobApplication.name) private readonly appModel: Model<JobApplicationDocument>,
+  ) {}
 
-  getLearnerAnalytics(userId: string) {
-    const profile = this.dataStore.profiles.get(userId);
-    const userAttempts = Array.from(this.dataStore.assessmentAttempts.values()).filter(
-      (a) => a.userId === userId,
-    );
+  async getLearnerAnalytics(userId: string) {
+    const query: any[] = [{ userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
 
-    const assessmentTrend = userAttempts.map((a) => ({
+    const profile = await this.profileModel.findOne({ $or: query }).lean();
+    const userAttempts = await this.attemptModel.find({ userId }).lean();
+
+    const assessmentTrend = userAttempts.map((a: any) => ({
       test: a.skillName || a.assessmentTitle,
       score: a.score,
     }));
@@ -25,20 +35,22 @@ export class AnalyticsService {
       readinessTrajectory,
       weeklyStudyHours: [],
       skillProficiencyDistribution:
-        profile?.skills?.map((s) => ({
+        profile?.skills?.map((s: any) => ({
           skill: s.name,
-          proficiency: s.proficiency,
-          confidence: s.confidence,
-          verified: s.verified,
+          proficiency: s.proficiency || 0,
+          confidence: s.confidence || 0,
+          verified: s.verified || false,
         })) || [],
       assessmentScoreTrend: assessmentTrend,
     };
   }
 
-  getEmployerFunnel(user?: any) {
+  async getEmployerFunnel(user?: any) {
     const isAdmin = user?.role === 'admin';
-    const allApps = Array.from(this.dataStore.applications.values());
-    const employerJobs = Array.from(this.dataStore.jobs.values()).filter((j) => {
+    const allApps = await this.appModel.find().lean();
+    const allJobs = await this.jobModel.find().lean();
+
+    const employerJobs = allJobs.filter((j: any) => {
       if (isAdmin || !user) return true;
       return (
         j.ownerUserId === user.id ||
@@ -46,16 +58,17 @@ export class AnalyticsService {
         (user.companyName && j.companyName?.toLowerCase() === user.companyName.toLowerCase())
       );
     });
-    const allowedJobIds = new Set(employerJobs.map((j) => j.id));
-    const apps = (isAdmin || !user) ? allApps : allApps.filter((a) => allowedJobIds.has(a.jobId));
+
+    const allowedJobIds = new Set(employerJobs.map((j: any) => j.id || j._id.toString()));
+    const apps = (isAdmin || !user) ? allApps : allApps.filter((a: any) => allowedJobIds.has(a.jobId));
 
     const applied = apps.length;
-    const screening = apps.filter((a) => a.status === 'screening' || a.status === 'reviewing').length;
-    const shortlisted = apps.filter((a) => a.status === 'shortlisted').length;
-    const interview = apps.filter((a) => a.status === 'interview' || a.status === 'interviewing').length;
-    const final = apps.filter((a) => a.status === 'final').length;
-    const offered = apps.filter((a) => a.status === 'offered').length;
-    const hired = apps.filter((a) => a.status === 'hired').length;
+    const screening = apps.filter((a: any) => a.status === 'screening' || a.status === 'reviewing').length;
+    const shortlisted = apps.filter((a: any) => a.status === 'shortlisted').length;
+    const interview = apps.filter((a: any) => a.status === 'interview' || a.status === 'interviewing').length;
+    const final = apps.filter((a: any) => a.status === 'final').length;
+    const offered = apps.filter((a: any) => a.status === 'offered').length;
+    const hired = apps.filter((a: any) => a.status === 'hired').length;
 
     return {
       hasData: apps.length > 0,

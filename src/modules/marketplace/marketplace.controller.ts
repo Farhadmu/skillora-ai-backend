@@ -27,7 +27,7 @@ export class MarketplaceController {
 
   @Get('jobs/:id')
   @ApiOperation({ summary: 'Get single job listing details' })
-  getJobById(@Param('id') id: string) {
+  getJobById(@Param('id') id: string): Promise<any> {
     return this.marketplaceService.getJobById(id);
   }
 
@@ -36,7 +36,7 @@ export class MarketplaceController {
   @Roles(Role.LEARNER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Apply for a job with verified readiness credentials' })
-  apply(@CurrentUser() user: any, @Param('id') jobId: string) {
+  apply(@CurrentUser() user: any, @Param('id') jobId: string): Promise<any> {
     return this.marketplaceService.applyForJob(user.id, jobId);
   }
 

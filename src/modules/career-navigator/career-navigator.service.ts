@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class CareerNavigatorService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
     private readonly aiService: AiService,
   ) {}
 
@@ -54,8 +56,8 @@ export class CareerNavigatorService {
    * Compare learner profile against two roles
    */
   async compareRoles(userId: string, roleA: string, roleB: string) {
-    const profile = this.dataStore.profiles.get(userId);
-    const userSkills = profile?.skills.map((s) => s.name) || [];
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    const userSkills = (profile?.skills || []).map((s: any) => s.name);
 
     const roles = this.getAvailableRoles();
     const infoA = roles.find((r) => r.title.toLowerCase() === roleA.toLowerCase()) || roles[0];
@@ -89,8 +91,8 @@ export class CareerNavigatorService {
    * Job Description Intelligence Analysis
    */
   async analyzeJobDescription(userId: string, jdText: string) {
-    const profile = this.dataStore.profiles.get(userId);
-    const userSkills = profile?.skills.map((s) => s.name) || [];
+    const profile = await this.profileModel.findOne({ userId }).lean();
+    const userSkills = (profile?.skills || []).map((s: any) => s.name);
 
     return this.aiService.analyzeJobDescription(jdText, userSkills);
   }

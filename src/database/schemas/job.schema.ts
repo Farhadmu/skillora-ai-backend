@@ -8,6 +8,9 @@ export type SavedJobDocument = SavedJob & Document;
 
 @Schema({ timestamps: true, collection: 'companies' })
 export class Company {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, trim: true, index: true })
   name: string;
 
@@ -43,6 +46,9 @@ export const CompanySchema = SchemaFactory.createForClass(Company);
 
 @Schema({ timestamps: true, collection: 'jobs' })
 export class Job {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   companyId: string;
 
@@ -100,6 +106,9 @@ export class Job {
 
   @Prop({ default: null, index: true })
   creatorUserId?: string;
+
+  @Prop({ default: null, index: true })
+  ownerUserId?: string;
 }
 
 export const JobSchema = SchemaFactory.createForClass(Job);
@@ -108,6 +117,9 @@ JobSchema.index({ status: 1, postedAt: -1 });
 
 @Schema({ timestamps: true, collection: 'job_applications' })
 export class JobApplication {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   jobId: string;
 

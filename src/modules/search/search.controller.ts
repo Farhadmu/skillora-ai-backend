@@ -12,4 +12,10 @@ export class SearchController {
   search(@Query('q') query: string) {
     return this.searchService.globalSearch(query || '');
   }
+
+  @Get('global')
+  @ApiOperation({ summary: 'Global search alias' })
+  searchGlobal(@Query('q') query: string) {
+    return this.searchService.globalSearch(query || '');
+  }
 }

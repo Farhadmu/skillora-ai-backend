@@ -1,38 +1,58 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DataStoreService, AssessmentEntity } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
+import { Assessment, AssessmentDocument, AssessmentAttempt, AssessmentAttemptDocument } from '../../database/schemas/assessment.schema';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
+import { Roadmap, RoadmapDocument } from '../../database/schemas/roadmap.schema';
+import { SkillEvidence, SkillEvidenceDocument } from '../../database/schemas/skill.schema';
+import { Notification, NotificationDocument } from '../../database/schemas/communication.schema';
+import { AnalyticsEvent, AnalyticsEventDocument } from '../../database/schemas/analytics-audit.schema';
 
 @Injectable()
 export class AssessmentsService {
-  constructor(private readonly dataStore: DataStoreService) {}
+  constructor(
+    @InjectModel(Assessment.name) private readonly assessmentModel: Model<AssessmentDocument>,
+    @InjectModel(AssessmentAttempt.name) private readonly attemptModel: Model<AssessmentAttemptDocument>,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+    @InjectModel(Roadmap.name) private readonly roadmapModel: Model<RoadmapDocument>,
+    @InjectModel(SkillEvidence.name) private readonly evidenceModel: Model<SkillEvidenceDocument>,
+    @InjectModel(Notification.name) private readonly notificationModel: Model<NotificationDocument>,
+    @InjectModel(AnalyticsEvent.name) private readonly analyticsModel: Model<AnalyticsEventDocument>,
+  ) {}
 
-  getAllAssessments(category?: string) {
-    let list = Array.from(this.dataStore.assessments.values());
+  async getAllAssessments(category?: string) {
+    const filter: any = {};
     if (category && category !== 'All') {
-      list = list.filter((a) => a.category.toLowerCase() === category.toLowerCase());
+      filter.category = new RegExp(`^${category}$`, 'i');
     }
-    return list.map((a) => ({
-      id: a.id,
+
+    const list = await this.assessmentModel.find(filter).lean();
+    return list.map((a: any) => ({
+      id: a.id || a._id.toString(),
       title: a.title,
       category: a.category,
       skillName: a.skillName,
       difficulty: a.difficulty,
       durationMinutes: a.durationMinutes,
       passingScore: a.passingScore,
-      questionsCount: a.questions.length,
+      questionsCount: a.questions?.length || a.questionsCount || 0,
     }));
   }
 
-  getAssessmentById(id: string): AssessmentEntity {
-    const assessment = this.dataStore.assessments.get(id);
+  async getAssessmentById(id: string) {
+    const query: any[] = [{ id }];
+    if (isValidObjectId(id)) query.push({ _id: id });
+
+    const assessment = await this.assessmentModel.findOne({ $or: query }).lean();
     if (!assessment) {
       throw new NotFoundException(`Assessment ${id} not found`);
     }
     return assessment;
   }
 
-  createAssessment(data: Partial<AssessmentEntity>) {
+  async createAssessment(data: any) {
     const id = data.id || `asm-custom-${Date.now()}`;
-    const newAssessment: AssessmentEntity = {
+    const newAssessment = await this.assessmentModel.create({
       id,
       title: data.title || 'Custom Verified Technical Assessment',
       category: data.category || 'Engineering',
@@ -42,20 +62,21 @@ export class AssessmentsService {
       passingScore: data.passingScore || 75,
       questionsCount: data.questions?.length || 0,
       questions: data.questions || [],
-    };
-    this.dataStore.assessments.set(id, newAssessment);
-    return newAssessment;
+    });
+
+    return newAssessment.toObject ? newAssessment.toObject() : newAssessment;
   }
 
   /**
-   * Submit and evaluate assessment answers
+   * Submit and evaluate assessment answers with real persistence
    */
   async submitAssessment(userId: string, assessmentId: string, answers: Record<string, any>) {
-    const assessment = this.getAssessmentById(assessmentId);
+    const assessment: any = await this.getAssessmentById(assessmentId);
     let correctCount = 0;
     const questionFeedback: any[] = [];
 
-    for (const q of assessment.questions) {
+    const questions = assessment.questions || [];
+    for (const q of questions) {
       const userAnswer = answers[q.id];
       const isCorrect = String(userAnswer) === String(q.correctAnswer);
       if (isCorrect) correctCount++;
@@ -70,40 +91,43 @@ export class AssessmentsService {
       });
     }
 
-    const totalQuestions = assessment.questions.length;
+    const totalQuestions = questions.length || 1;
     const scorePercentage = Math.round((correctCount / totalQuestions) * 100);
-    const passed = scorePercentage >= assessment.passingScore;
+    const passed = scorePercentage >= (assessment.passingScore || 70);
 
     // Update user profile skill verification
-    const profile = this.dataStore.profiles.get(userId);
+    const profile = await this.profileModel.findOne({ userId });
     if (profile) {
-      const skillIndex = profile.skills.findIndex(
-        (s) => s.name.toLowerCase() === assessment.skillName.toLowerCase(),
+      const skills = profile.skills || [];
+      const skillIndex = skills.findIndex(
+        (s: any) => s.name.toLowerCase() === assessment.skillName.toLowerCase(),
       );
 
       if (skillIndex >= 0) {
-        profile.skills[skillIndex].proficiency = Math.max(
-          profile.skills[skillIndex].proficiency,
-          scorePercentage,
-        );
+        skills[skillIndex].proficiency = Math.max(skills[skillIndex].proficiency, scorePercentage);
         if (passed) {
-          profile.skills[skillIndex].verified = true;
-          profile.skills[skillIndex].evidence.push(
-            `Verified Assessment: ${assessment.title} (${scorePercentage}%)`,
+          skills[skillIndex].verified = true;
+          skills[skillIndex].evidence = Array.from(
+            new Set([
+              ...(skills[skillIndex].evidence || []),
+              `Verified Assessment: ${assessment.title} (${scorePercentage}%)`,
+            ]),
           );
         }
       } else {
-        profile.skills.push({
+        skills.push({
           name: assessment.skillName,
           category: assessment.category,
           proficiency: scorePercentage,
           confidence: scorePercentage,
+          source: 'ASSESSMENT-VERIFIED',
           verified: passed,
           evidence: [`Verified Assessment: ${assessment.title} (${scorePercentage}%)`],
-        });
+          learningProgress: scorePercentage,
+        } as any);
       }
 
-      // Recompute readiness score
+      profile.skills = skills;
       profile.readinessScore = Math.min(Math.round(profile.readinessScore * 0.85 + scorePercentage * 0.15), 100);
       if (profile.readinessDimensions) {
         profile.readinessDimensions.technical = Math.min(
@@ -111,80 +135,80 @@ export class AssessmentsService {
           100,
         );
       }
-      this.dataStore.saveProfile(profile);
+      await profile.save();
+    }
 
-      // Record granular attempt in database
-      this.dataStore.recordAssessmentAttempt({
+    // Record granular attempt in MongoDB
+    await this.attemptModel.create({
+      id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId,
+      assessmentId,
+      assessmentTitle: assessment.title,
+      skillName: assessment.skillName,
+      score: scorePercentage,
+      passed,
+      totalQuestions,
+      correctAnswers: correctCount,
+      answers: questionFeedback,
+      completedAt: new Date(),
+    });
+
+    // Record verified skill evidence if passed
+    if (passed) {
+      await this.evidenceModel.create({
+        id: `evi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         userId,
+        skillId: assessment.skillName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        skillName: assessment.skillName,
+        evidenceType: 'ASSESSMENT',
+        title: `Verified Assessment: ${assessment.title}`,
+        score: scorePercentage,
+        verified: true,
+      });
+
+      await this.notificationModel.create({
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        userId,
+        title: `Verified Skill Awarded: ${assessment.skillName}`,
+        message: `Congratulations! You scored ${scorePercentage}% on the ${assessment.title} assessment. Your employability score increased!`,
+        type: 'skill_improvement',
+        link: '/learner/skills/evidence',
+      });
+    }
+
+    // Check and advance matching active roadmap milestones
+    const userRoadmap = await this.roadmapModel.findOne({ userId, status: 'active' });
+    if (userRoadmap && userRoadmap.milestones) {
+      let roadmapUpdated = false;
+      for (const milestone of userRoadmap.milestones) {
+        if (
+          milestone.focusSkill.toLowerCase().includes(assessment.skillName.toLowerCase()) ||
+          milestone.assessmentTopic.toLowerCase().includes(assessment.skillName.toLowerCase())
+        ) {
+          if (passed && !milestone.completed) {
+            milestone.completed = true;
+            roadmapUpdated = true;
+          }
+        }
+      }
+      if (roadmapUpdated) {
+        const completedCount = userRoadmap.milestones.filter((m: any) => m.completed).length;
+        userRoadmap.progressPercent = Math.round((completedCount / userRoadmap.milestones.length) * 100);
+        await userRoadmap.save();
+      }
+    }
+
+    // Log analytics event
+    await this.analyticsModel.create({
+      eventName: 'assessment_completed',
+      userId,
+      metadata: {
         assessmentId,
-        assessmentTitle: assessment.title,
         skillName: assessment.skillName,
         score: scorePercentage,
         passed,
-        totalQuestions,
-        correctAnswers: correctCount,
-        answers: questionFeedback,
-      });
-
-      // Record verified skill evidence if passed
-      if (passed) {
-        this.dataStore.recordSkillEvidence({
-          userId,
-          skillId: assessment.skillName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          skillName: assessment.skillName,
-          evidenceType: 'ASSESSMENT',
-          title: `Verified Assessment: ${assessment.title}`,
-          score: scorePercentage,
-          verified: true,
-        });
-
-        this.dataStore.recordNotification({
-          userId,
-          title: `Verified Skill Awarded: ${assessment.skillName}`,
-          message: `Congratulations! You scored ${scorePercentage}% on the ${assessment.title} assessment. Your employability score increased!`,
-          type: 'skill_improvement',
-          link: '/learner/skills/evidence',
-        });
-      }
-
-      // Check and advance matching active roadmap milestones
-      const userRoadmap = Array.from(this.dataStore.roadmaps.values()).find(
-        (r) => r.userId === userId,
-      );
-      if (userRoadmap) {
-        let roadmapUpdated = false;
-        for (const milestone of userRoadmap.milestones) {
-          if (
-            milestone.focusSkill.toLowerCase().includes(assessment.skillName.toLowerCase()) ||
-            milestone.assessmentTopic.toLowerCase().includes(assessment.skillName.toLowerCase())
-          ) {
-            if (passed && !milestone.completed) {
-              milestone.completed = true;
-              roadmapUpdated = true;
-            }
-          }
-        }
-        if (roadmapUpdated) {
-          const completedCount = userRoadmap.milestones.filter((m) => m.completed).length;
-          userRoadmap.progressPercent = Math.round(
-            (completedCount / userRoadmap.milestones.length) * 100,
-          );
-          this.dataStore.saveRoadmap(userRoadmap);
-        }
-      }
-
-      // Log real analytics event
-      this.dataStore.logAnalyticsEvent({
-        eventName: 'assessment_completed',
-        userId,
-        metadata: {
-          assessmentId,
-          skillName: assessment.skillName,
-          score: scorePercentage,
-          passed,
-        },
-      });
-    }
+      },
+    }).catch(() => {});
 
     return {
       assessmentId,

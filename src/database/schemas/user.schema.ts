@@ -6,6 +6,9 @@ export type UserDocument = User & Document;
 
 @Schema({ timestamps: true, collection: 'users' })
 export class User {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, unique: true, index: true, lowercase: true, trim: true })
   email: string;
 
@@ -38,6 +41,9 @@ export class User {
 
   @Prop({ default: null })
   passwordResetExpires?: Date;
+
+  @Prop({ default: null })
+  refreshToken?: string;
 
   @Prop({ default: null })
   refreshTokenHash?: string;

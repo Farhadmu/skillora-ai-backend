@@ -7,6 +7,9 @@ export type MessageDocument = Message & Document;
 
 @Schema({ timestamps: true, collection: 'notifications' })
 export class Notification {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   userId: string;
 

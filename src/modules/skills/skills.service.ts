@@ -1,67 +1,69 @@
 import { Injectable } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Skill, SkillDocument } from '../../database/schemas/skill.schema';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
 
 @Injectable()
 export class SkillsService {
-  constructor(private readonly dataStore: DataStoreService) {}
+  constructor(
+    @InjectModel(Skill.name) private readonly skillModel: Model<SkillDocument>,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+  ) {}
 
-  getAllSkills(category?: string, query?: string) {
-    let list = Array.from(this.dataStore.skills.values());
-
+  async getAllSkills(category?: string, query?: string) {
+    const filter: any = {};
     if (category && category !== 'All') {
-      list = list.filter((s) => s.category.toLowerCase() === category.toLowerCase());
+      filter.category = new RegExp(`^${category}$`, 'i');
     }
-
     if (query) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.category.toLowerCase().includes(q) ||
-          s.subcategory.toLowerCase().includes(q),
-      );
+      filter.$or = [
+        { name: new RegExp(query, 'i') },
+        { category: new RegExp(query, 'i') },
+        { subcategory: new RegExp(query, 'i') },
+      ];
     }
 
-    return list;
+    return this.skillModel.find(filter).lean();
   }
 
   /**
    * Generates graph representation of skills, prerequisites, and user mastery
    */
-  getSkillGraph(userId?: string) {
-    const allSkills = Array.from(this.dataStore.skills.values());
-    const userProfile = userId ? this.dataStore.profiles.get(userId) : null;
+  async getSkillGraph(userId?: string) {
+    const allSkills = await this.skillModel.find().lean();
+    const userProfile = userId ? await this.profileModel.findOne({ userId }).lean() : null;
+
     const userSkillMap = new Map(
-      userProfile?.skills.map((s) => [s.name.toLowerCase(), s.proficiency]) || [],
+      (userProfile?.skills || []).map((s: any) => [s.name.toLowerCase(), s.proficiency || 0]),
     );
 
-    const nodes = allSkills.map((s) => {
+    const nodes = allSkills.map((s: any) => {
       const proficiency = userSkillMap.get(s.name.toLowerCase()) || 0;
       return {
-        id: s.id,
+        id: s.id || s._id.toString(),
         name: s.name,
         category: s.category,
         difficulty: s.difficulty,
         demandScore: s.industryDemandScore,
         proficiency,
         status: proficiency > 75 ? 'Mastered' : proficiency > 40 ? 'Learning' : 'Unacquired',
-        val: Math.max(10, Math.round(s.industryDemandScore / 5)),
+        val: Math.max(10, Math.round((s.industryDemandScore || 80) / 5)),
       };
     });
 
     const links: Array<{ source: string; target: string; type: string }> = [];
-
-    // Connect prerequisites and category clusters
-    const skillNameMap = new Map(allSkills.map((s) => [s.name.toLowerCase(), s.id]));
+    const skillNameMap = new Map(allSkills.map((s: any) => [s.name.toLowerCase(), s.id || s._id.toString()]));
 
     for (const s of allSkills) {
       if (s.prerequisites && s.prerequisites.length > 0) {
         for (const prereq of s.prerequisites) {
           const targetId = skillNameMap.get(prereq.toLowerCase());
-          if (targetId && targetId !== s.id) {
+          const sourceId = s.id || s._id.toString();
+          if (targetId && targetId !== sourceId) {
             links.push({
               source: targetId,
-              target: s.id,
+              target: sourceId,
               type: 'prerequisite',
             });
           }
@@ -83,13 +85,12 @@ export class SkillsService {
   /**
    * Skill Gap Analysis between Learner Profile and Target Role
    */
-  analyzeSkillGaps(userId: string, targetRole: string) {
-    const profile = this.dataStore.profiles.get(userId);
+  async analyzeSkillGaps(userId: string, targetRole: string) {
+    const profile = await this.profileModel.findOne({ userId }).lean();
     const userSkillMap = new Map(
-      profile?.skills.map((s) => [s.name.toLowerCase(), s.proficiency]) || [],
+      (profile?.skills || []).map((s: any) => [s.name.toLowerCase(), s.proficiency || 0]),
     );
 
-    // Role expectations benchmarks
     const roleRequirementsMap: Record<string, string[]> = {
       'Full-Stack AI Systems Engineer': [
         'TypeScript',

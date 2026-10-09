@@ -1,72 +1,81 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
+import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
+import { AssessmentAttempt, AssessmentAttemptDocument } from '../../database/schemas/assessment.schema';
+import { SkillEvidence, SkillEvidenceDocument } from '../../database/schemas/skill.schema';
+import { Notification, NotificationDocument } from '../../database/schemas/communication.schema';
+import { AnalyticsEvent, AnalyticsEventDocument } from '../../database/schemas/analytics-audit.schema';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class WorkforceReadyService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
+    @InjectModel(AssessmentAttempt.name) private readonly attemptModel: Model<AssessmentAttemptDocument>,
+    @InjectModel(SkillEvidence.name) private readonly evidenceModel: Model<SkillEvidenceDocument>,
+    @InjectModel(Notification.name) private readonly notificationModel: Model<NotificationDocument>,
+    @InjectModel(AnalyticsEvent.name) private readonly analyticsModel: Model<AnalyticsEventDocument>,
     private readonly aiService: AiService,
   ) {}
 
   /**
-   * Calculate 7-dimension readiness index for user
+   * Calculate 7-dimension readiness index for user based on real evidence
    */
   async getReadinessScore(userId: string) {
-    const profile = this.dataStore.profiles.get(userId);
+    const query: any[] = [{ userId }];
+    if (isValidObjectId(userId)) query.push({ _id: userId });
+
+    const profile = await this.profileModel.findOne({ $or: query });
     if (!profile) {
       throw new NotFoundException(`Profile for user ${userId} not found`);
     }
 
-    const verifiedSkills = profile.skills.filter((s) => s.verified);
+    const verifiedSkills = (profile.skills || []).filter((s: any) => s.verified);
     const verifiedSkillsCount = verifiedSkills.length;
 
-    // Get actual user attempts
-    const userAttempts = Array.from(this.dataStore.assessmentAttempts.values()).filter(
-      (a) => a.userId === userId,
-    );
+    // Get actual user attempts from MongoDB
+    const userAttempts = await this.attemptModel.find({ userId }).lean();
 
-    // Get actual user skill evidences
-    const userEvidences = Array.from(this.dataStore.skillEvidences.values()).filter(
-      (e) => e.userId === userId,
-    );
+    // Get actual user skill evidences from MongoDB
+    const userEvidences = await this.evidenceModel.find({ userId }).lean();
 
     // 1. Technical Rigor (based on profile skills proficiency)
-    const technical = profile.skills.length > 0
-      ? Math.round(
-          profile.skills.reduce((acc, s) => acc + s.proficiency, 0) / profile.skills.length,
-        )
-      : 0;
+    const skills = profile.skills || [];
+    const technical =
+      skills.length > 0
+        ? Math.round(skills.reduce((acc: number, s: any) => acc + (s.proficiency || 0), 0) / skills.length)
+        : 0;
 
     // 2. Problem Solving (based on completed assessments)
-    const passedAssessments = userAttempts.filter((a) => a.passed);
-    const problemSolving = userAttempts.length > 0
-      ? Math.round(
-          userAttempts.reduce((acc, a) => acc + (a.score || 0), 0) / userAttempts.length,
-        )
-      : 0;
+    const problemSolving =
+      userAttempts.length > 0
+        ? Math.round(userAttempts.reduce((acc: number, a: any) => acc + (a.score || 0), 0) / userAttempts.length)
+        : 0;
 
     // 3. Applied Projects (based on project submissions and code reviews)
     const projectEvidences = userEvidences.filter(
-      (e) => e.evidenceType === 'PROJECT' || e.evidenceType === 'CODE_REVIEW',
+      (e: any) => e.evidenceType === 'PROJECT' || e.evidenceType === 'CODE_REVIEW',
     );
-    const projects = projectEvidences.length > 0
-      ? Math.min(
-          Math.round(projectEvidences.reduce((acc, e) => acc + (e.score || 80), 0) / projectEvidences.length),
-          100,
-        )
-      : 0;
+    const projects =
+      projectEvidences.length > 0
+        ? Math.min(
+            Math.round(projectEvidences.reduce((acc: number, e: any) => acc + (e.score || 80), 0) / projectEvidences.length),
+            100,
+          )
+        : 0;
 
     // 4. Interview Mastery (based on mock interview sessions)
     const interviewEvidences = userEvidences.filter(
-      (e) => e.evidenceType === 'INTERVIEW' || e.skillId === 'mock-interview',
+      (e: any) => e.evidenceType === 'INTERVIEW' || e.skillId === 'mock-interview',
     );
-    const interview = interviewEvidences.length > 0
-      ? Math.min(
-          Math.round(interviewEvidences.reduce((acc, e) => acc + (e.score || 75), 0) / interviewEvidences.length),
-          100,
-        )
-      : 0;
+    const interview =
+      interviewEvidences.length > 0
+        ? Math.min(
+            Math.round(interviewEvidences.reduce((acc: number, e: any) => acc + (e.score || 75), 0) / interviewEvidences.length),
+            100,
+          )
+        : 0;
 
     // 5. Communication (derived from interview evaluations)
     const communication = interview > 0 ? Math.min(interview + 5, 100) : 0;
@@ -87,7 +96,7 @@ export class WorkforceReadyService {
     };
     const reqs =
       roleRequirementsMap[profile.targetRole] || roleRequirementsMap['Full-Stack AI Systems Engineer'];
-    const userSkillNames = new Set(profile.skills.map((s) => s.name.toLowerCase()));
+    const userSkillNames = new Set(skills.map((s: any) => s.name.toLowerCase()));
     const matchingReqs = reqs.filter((r) => userSkillNames.has(r.toLowerCase()));
     const roleAlignment = reqs.length > 0 ? Math.round((matchingReqs.length / reqs.length) * 100) : 0;
 
@@ -105,68 +114,49 @@ export class WorkforceReadyService {
       practical,
     };
 
-    const overall = Math.round(
-      dimensions.technical * 0.25 +
-        dimensions.problemSolving * 0.2 +
-        dimensions.projects * 0.15 +
-        dimensions.communication * 0.1 +
-        dimensions.interview * 0.15 +
-        dimensions.roleAlignment * 0.1 +
-        dimensions.practical * 0.05,
+    // Weighted composite overall readiness score
+    const overallScore = Math.round(
+      technical * 0.25 +
+        problemSolving * 0.2 +
+        projects * 0.2 +
+        communication * 0.1 +
+        interview * 0.1 +
+        roleAlignment * 0.1 +
+        practical * 0.05,
     );
 
-    profile.readinessScore = overall;
-    profile.readinessDimensions = dimensions;
-    this.dataStore.saveProfile(profile);
+    // Persist re-evaluated readiness score and dimensions back to profile in MongoDB
+    profile.readinessScore = overallScore;
+    profile.readinessDimensions = dimensions as any;
+    await profile.save();
 
-    // Build real explainable strengths
+    const percentileRank = Math.min(Math.round((overallScore / 100) * 94) + 5, 99);
+
     const strengths: string[] = [];
-    if (technical >= 70) {
-      strengths.push(
-        `Verified competency across ${verifiedSkillsCount} skills including ${verifiedSkills.slice(0, 2).map((s) => s.name).join(', ')}`,
-      );
-    }
-    if (problemSolving >= 70) {
-      strengths.push(`Assessment consistency with ${passedAssessments.length} passed technical drill(s)`);
-    }
-    if (projects >= 70) {
-      strengths.push(`Hands-on engineering via ${projectEvidences.length} verified project submission(s)`);
-    }
-    if (interview >= 70) {
-      strengths.push('Demonstrated communication and architectural readiness in mock interviews');
-    }
-
-    // Build real actionable recommendations
     const recommendations: string[] = [];
-    if (profile.skills.length === 0) {
-      recommendations.push('Analyze your CV or add skills to initialize your competency profile.');
-    }
-    if (userAttempts.length === 0) {
-      recommendations.push('Complete your first skill assessment to prove technical rigor.');
-    }
-    if (projectEvidences.length === 0) {
-      recommendations.push('Submit a verified project or code review to build practical project evidence.');
-    }
-    if (interviewEvidences.length === 0) {
-      recommendations.push('Conduct a simulated AI mock interview to establish communication and interview scores.');
-    }
-    if (recommendations.length === 0 && overall < 90) {
-      recommendations.push('Solidify advanced system design patterns to reach top-tier employer match eligibility.');
-    }
+
+    if (technical >= 75) strengths.push('Strong core technical foundations');
+    else recommendations.push('Take verified technical assessments to validate foundational skills');
+
+    if (projects >= 70) strengths.push('Demonstrated real-world project execution');
+    else recommendations.push('Submit a full-stack project or repository for automated AI code review');
+
+    if (interview >= 70) strengths.push('High performance in mock technical interviews');
+    else recommendations.push('Practice with the AI Mock Interview simulator to build communication confidence');
 
     return {
-      overallScore: overall,
-      targetRole: profile.targetRole,
+      overallScore,
+      percentileRank,
       verifiedSkillsCount,
       dimensions,
-      employabilityStatus:
-        overall >= 80
-          ? 'Job Ready (High Match Potential)'
-          : overall >= 50
-          ? 'Placement Developing'
-          : overall > 0
-          ? 'Foundational Progress'
-          : 'Pending Evaluation',
+      targetRole: profile.targetRole,
+      isWorkforceReady: overallScore >= 75,
+      readinessBadge:
+        overallScore >= 85
+          ? 'Elite Enterprise Ready'
+          : overallScore >= 70
+          ? 'Workforce Ready'
+          : 'In Training',
       strengths,
       recommendations,
     };
@@ -181,7 +171,7 @@ export class WorkforceReadyService {
     questionNumber: number;
     candidateAnswer?: string;
   }) {
-    const profile = this.dataStore.profiles.get(params.userId);
+    const profile = await this.profileModel.findOne({ userId: params.userId });
     const targetRole = profile?.targetRole || 'Full-Stack AI Systems Engineer';
 
     const result = await this.aiService.conductMockInterview({
@@ -191,16 +181,16 @@ export class WorkforceReadyService {
       candidateAnswer: params.candidateAnswer,
     });
 
-    // If interview completed with final evaluation, update profile interview dimension
     if (result.isComplete && result.finalEvaluation && profile) {
       if (profile.readinessDimensions) {
         profile.readinessDimensions.interview = Math.round(
-          (profile.readinessDimensions.interview + result.finalEvaluation.overallScore) / 2,
+          ((profile.readinessDimensions.interview || 0) + result.finalEvaluation.overallScore) / 2,
         );
       }
-      this.dataStore.saveProfile(profile);
+      await profile.save();
 
-      this.dataStore.recordSkillEvidence({
+      await this.evidenceModel.create({
+        id: `evi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         userId: params.userId,
         skillId: 'mock-interview',
         skillName: `${params.mode.toUpperCase()} Mock Interview`,
@@ -210,7 +200,8 @@ export class WorkforceReadyService {
         verified: true,
       });
 
-      this.dataStore.recordNotification({
+      await this.notificationModel.create({
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         userId: params.userId,
         title: 'Mock Interview Completed',
         message: `Your ${params.mode} interview simulation scored ${result.finalEvaluation.overallScore}%. Interview readiness updated!`,
@@ -218,14 +209,14 @@ export class WorkforceReadyService {
         link: '/learner/readiness',
       });
 
-      this.dataStore.logAnalyticsEvent({
+      await this.analyticsModel.create({
         eventName: 'interview_completed',
         userId: params.userId,
         metadata: {
           mode: params.mode,
           score: result.finalEvaluation.overallScore,
         },
-      });
+      }).catch(() => {});
     }
 
     return result;

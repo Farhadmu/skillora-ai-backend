@@ -10,6 +10,9 @@ export type CertificateDocument = Certificate & Document;
 
 @Schema({ timestamps: true, collection: 'projects' })
 export class Project {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, trim: true, index: true })
   title: string;
 

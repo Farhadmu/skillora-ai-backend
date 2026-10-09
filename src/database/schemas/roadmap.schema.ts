@@ -57,6 +57,9 @@ export const RoadmapMilestoneSchema = SchemaFactory.createForClass(RoadmapMilest
 
 @Schema({ timestamps: true, collection: 'roadmaps' })
 export class Roadmap {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   userId: string;
 

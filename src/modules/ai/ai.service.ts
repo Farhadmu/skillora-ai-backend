@@ -88,11 +88,26 @@ export class AiService {
     // 7. Ollama Local Endpoint (100% Free & Open Source local offline execution)
     this.ollamaUrl = process.env.OLLAMA_BASE_URL || null;
     if (this.ollamaUrl) {
-      this.logger.log(`AI Provider [7/8]: Ollama local node configured at ${this.ollamaUrl}`);
+      this.logger.log(`AI Provider [7/7]: Ollama local node configured at ${this.ollamaUrl}`);
     }
+  }
 
-    // 8. Skillora Deterministic Semantic Neural Engine (Always active zero-cost fallback)
-    this.logger.log('AI Provider [8/8]: Skillora Deterministic Semantic Neural Engine ONLINE');
+  /**
+   * Generate 768-dimensional dense vector embedding via Gemini text-embedding-004
+   */
+  async generateEmbedding(text: string): Promise<number[] | null> {
+    if (this.genAI) {
+      try {
+        const embeddingModel = this.genAI.getGenerativeModel({ model: 'text-embedding-004' });
+        const result = await embeddingModel.embedContent(text);
+        if (result?.embedding?.values && result.embedding.values.length === 768) {
+          return result.embedding.values;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Gemini embedding generation failed: ${err.message}`);
+      }
+    }
+    return null;
   }
 
   /**
@@ -155,14 +170,6 @@ export class AiService {
         freeTier: true,
         model: 'llama3:latest',
         status: this.ollamaUrl ? 'ONLINE' : 'NOT_CONFIGURED',
-      },
-      {
-        name: 'Skillora Neural Engine (Deterministic)',
-        configured: true,
-        priority: 8,
-        freeTier: true,
-        model: 'skillora-semantic-heuristics-v2',
-        status: 'ONLINE',
       },
     ];
   }
@@ -1009,7 +1016,7 @@ Return ONLY a valid JSON object matching this schema:
           name: skill.charAt(0).toUpperCase() + skill.slice(1),
           category: meta.cat,
           confidence: meta.conf,
-          evidence: [`Direct keyword detection in uploaded CV document: "${skill}"`],
+          evidence: [`Direct keyword detection in uploaded CV document: "${skill}" (UNVERIFIED_EVIDENCE)`],
         });
       }
     }
@@ -1021,7 +1028,7 @@ Return ONLY a valid JSON object matching this schema:
       experienceYears: 0,
       education: [],
       projects: [],
-      completenessScore: Math.min(detectedSkills.length * 6, 60),
+      completenessScore: 0, // Unverified keyword-only extraction has zero verified completeness
     };
   }
 }

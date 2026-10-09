@@ -46,6 +46,9 @@ export const CourseModuleSchema = SchemaFactory.createForClass(CourseModule);
 
 @Schema({ timestamps: true, collection: 'courses' })
 export class Course {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, trim: true, index: true })
   title: string;
 

@@ -42,6 +42,9 @@ export const AssessmentQuestionSchema = SchemaFactory.createForClass(AssessmentQ
 
 @Schema({ timestamps: true, collection: 'assessments' })
 export class Assessment {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, trim: true, index: true })
   title: string;
 
@@ -83,6 +86,9 @@ AssessmentSchema.index({ skillName: 1, difficulty: 1 });
 
 @Schema({ timestamps: true, collection: 'assessment_attempts' })
 export class AssessmentAttempt {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, index: true })
   assessmentId: string;
 

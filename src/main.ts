@@ -7,9 +7,15 @@ async function bootstrap() {
   const logger = new Logger('SkilloraBootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // Fail-fast JWT check
-  if (!process.env.JWT_SECRET) {
-    logger.error('FATAL: JWT_SECRET environment variable is missing. Application cannot start securely.');
+  // Fail-fast JWT check before accepting any traffic
+  const jwtSecret = process.env.JWT_SECRET;
+  const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
+  if (!jwtSecret || jwtSecret.length < 32 || jwtSecret.includes('skillora_super_secret') || jwtSecret.includes('your_crypto')) {
+    logger.error('FATAL: JWT_SECRET is missing, shorter than 32 characters, or using a placeholder value.');
+    process.exit(1);
+  }
+  if (!jwtRefreshSecret || jwtRefreshSecret.length < 32 || jwtRefreshSecret.includes('skillora_super_secret') || jwtRefreshSecret.includes('your_crypto')) {
+    logger.error('FATAL: JWT_REFRESH_SECRET is missing, shorter than 32 characters, or using a placeholder value.');
     process.exit(1);
   }
 

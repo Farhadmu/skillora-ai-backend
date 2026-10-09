@@ -20,6 +20,8 @@ yarn-error.log*
 data/
 db-persistence.json
 *.tmp
+integration-test-artifacts.json
+last-test-user.json
 
 # logs
 logs/

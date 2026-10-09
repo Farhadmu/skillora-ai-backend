@@ -11,7 +11,11 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "seed": "ts-node src/seed.ts",
-    "seed:development": "ts-node src/seed.ts"
+    "seed:development": "ts-node src/seed.ts",
+    "test": "node test/full-integration.js",
+    "test:integration": "node test/full-integration.js",
+    "test:persistence": "node test/restart-survival.js",
+    "test:health": "node test/test-mongodb-unavailable.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",

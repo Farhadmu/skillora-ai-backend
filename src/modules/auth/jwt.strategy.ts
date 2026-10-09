@@ -1,28 +1,46 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { DataStoreService } from '../../database/data-store.service';
+import { User, UserDocument } from '../../database/schemas/user.schema';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly dataStore: DataStoreService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+  ) {
+    const jwtSecret = configService.get<string>('JWT_SECRET');
+    if (!jwtSecret || jwtSecret.length < 32 || jwtSecret.includes('skillora_super_secret')) {
+      throw new Error('FATAL: Strong JWT_SECRET must be configured in environment');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'skillora_super_secret_access_key_2026',
+      secretOrKey: jwtSecret,
     });
   }
 
   async validate(payload: any) {
-    const user = this.dataStore.users.get(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException();
+    const query: any[] = [{ id: payload.sub }];
+    if (isValidObjectId(payload.sub)) {
+      query.push({ _id: payload.sub });
     }
+
+    const user = await this.userModel.findOne({ $or: query }).lean();
+    if (!user) {
+      throw new UnauthorizedException('Token refers to a non-existent user account');
+    }
+
     return {
-      id: user.id,
+      id: user.id || (user as any)._id?.toString(),
       email: user.email,
       role: user.role,
       name: user.name,
+      companyName: user.companyName,
     };
   }
 }

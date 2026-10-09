@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { DataStoreService } from '../../database/data-store.service';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Skill, SkillDocument } from '../../database/schemas/skill.schema';
+import { Job, JobDocument } from '../../database/schemas/job.schema';
+import { Project, ProjectDocument } from '../../database/schemas/project.schema';
+import { Assessment, AssessmentDocument } from '../../database/schemas/assessment.schema';
 import { RagService } from '../ai/rag.service';
 
 @Injectable()
 export class SearchService {
   constructor(
-    private readonly dataStore: DataStoreService,
+    @InjectModel(Skill.name) private readonly skillModel: Model<SkillDocument>,
+    @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
+    @InjectModel(Project.name) private readonly projectModel: Model<ProjectDocument>,
+    @InjectModel(Assessment.name) private readonly assessmentModel: Model<AssessmentDocument>,
     private readonly ragService: RagService,
   ) {}
 
@@ -14,44 +22,57 @@ export class SearchService {
       return { skills: [], jobs: [], projects: [], assessments: [], knowledge: [] };
     }
 
-    const q = query.toLowerCase();
+    const regex = new RegExp(query.trim(), 'i');
 
-    // 1. Search Skills
-    const skills = Array.from(this.dataStore.skills.values())
-      .filter((s) => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q))
-      .slice(0, 5)
-      .map((s) => ({ id: s.id, type: 'skill', title: s.name, subtitle: `${s.category} • ${s.difficulty}` }));
+    const [rawSkills, rawJobs, rawProjects, rawAssessments, knowledgeChunks] = await Promise.all([
+      this.skillModel
+        .find({ $or: [{ name: regex }, { category: regex }, { subcategory: regex }] })
+        .limit(5)
+        .lean(),
+      this.jobModel
+        .find({ $or: [{ title: regex }, { companyName: regex }, { requiredSkills: regex }] })
+        .limit(5)
+        .lean(),
+      this.projectModel
+        .find({ $or: [{ title: regex }, { targetSkills: regex }, { category: regex }] })
+        .limit(5)
+        .lean(),
+      this.assessmentModel
+        .find({ $or: [{ title: regex }, { skillName: regex }, { category: regex }] })
+        .limit(5)
+        .lean(),
+      this.ragService.retrieve(query, 3),
+    ]);
 
-    // 2. Search Jobs
-    const jobs = Array.from(this.dataStore.jobs.values())
-      .filter(
-        (j) =>
-          j.title.toLowerCase().includes(q) ||
-          j.companyName.toLowerCase().includes(q) ||
-          j.requiredSkills.some((s) => s.toLowerCase().includes(q)),
-      )
-      .slice(0, 5)
-      .map((j) => ({ id: j.id, type: 'job', title: j.title, subtitle: `${j.companyName} • ${j.location}` }));
+    const skills = rawSkills.map((s: any) => ({
+      id: s.id || s._id.toString(),
+      type: 'skill',
+      title: s.name,
+      subtitle: `${s.category} • ${s.difficulty || 'Intermediate'}`,
+    }));
 
-    // 3. Search Projects
-    const projects = Array.from(this.dataStore.projects.values())
-      .filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.targetSkills.some((s) => s.toLowerCase().includes(q)),
-      )
-      .slice(0, 5)
-      .map((p) => ({ id: p.id, type: 'project', title: p.title, subtitle: `${p.category} • ${p.difficulty}` }));
+    const jobs = rawJobs.map((j: any) => ({
+      id: j.id || j._id.toString(),
+      type: 'job',
+      title: j.title,
+      subtitle: `${j.companyName} • ${j.location || 'Remote'}`,
+    }));
 
-    // 4. Search Assessments
-    const assessments = Array.from(this.dataStore.assessments.values())
-      .filter((a) => a.title.toLowerCase().includes(q) || a.skillName.toLowerCase().includes(q))
-      .slice(0, 5)
-      .map((a) => ({ id: a.id, type: 'assessment', title: a.title, subtitle: `${a.skillName} • ${a.durationMinutes} mins` }));
+    const projects = rawProjects.map((p: any) => ({
+      id: p.id || p._id.toString(),
+      type: 'project',
+      title: p.title,
+      subtitle: `${p.category} • ${p.difficulty || 'Intermediate'}`,
+    }));
 
-    // 5. Search Knowledge Chunks
-    const knowledgeChunks = await this.ragService.retrieve(query, 3);
-    const knowledge = knowledgeChunks.map((k) => ({
+    const assessments = rawAssessments.map((a: any) => ({
+      id: a.id || a._id.toString(),
+      type: 'assessment',
+      title: a.title,
+      subtitle: `${a.skillName} • ${a.durationMinutes || 15} mins`,
+    }));
+
+    const knowledge = knowledgeChunks.map((k: any) => ({
       id: k.chunk.id,
       type: 'knowledge',
       title: k.chunk.topic,

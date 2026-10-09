@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { AiService } from '../ai/ai.service';
 import { RagService } from '../ai/rag.service';
+import { Message, MessageDocument, Conversation, ConversationDocument } from '../../database/schemas/communication.schema';
 
 export interface TutorSessionMessage {
   id: string;
@@ -14,11 +17,11 @@ export interface TutorSessionMessage {
 
 @Injectable()
 export class AiTeacherService {
-  private sessions: Map<string, TutorSessionMessage[]> = new Map();
-
   constructor(
     private readonly aiService: AiService,
     private readonly ragService: RagService,
+    @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
+    @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
   ) {}
 
   async chat(params: {
@@ -31,16 +34,38 @@ export class AiTeacherService {
     useRag?: boolean;
   }) {
     const { userId, message, subject, mode, bloomsLevel, language = 'en', useRag = true } = params;
-    const sessionId = `${userId}-${subject}`;
+    const conversationId = `tutor-${userId}-${subject.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
-    const sessionHistory = this.sessions.get(sessionId) || [];
+    // Load existing messages for this conversation from MongoDB
+    const pastRecords = await this.messageModel
+      .find({ conversationId })
+      .sort({ sentAt: 1 })
+      .lean();
 
-    // Save user message
+    const sessionHistory: TutorSessionMessage[] = pastRecords.map((m: any) => ({
+      id: m.id || m._id.toString(),
+      sender: m.senderId === userId ? 'user' : 'tutor',
+      text: m.content,
+      timestamp: m.sentAt ? new Date(m.sentAt).toISOString() : new Date().toISOString(),
+    }));
+
+    // Record user message in MongoDB
+    const userMsgRecord = await this.messageModel.create({
+      conversationId,
+      senderId: userId,
+      senderName: 'Learner',
+      senderRole: 'learner',
+      recipientId: 'ai-tutor',
+      content: message,
+      isRead: true,
+      sentAt: new Date(),
+    });
+
     const userMsg: TutorSessionMessage = {
-      id: `msg-${Date.now()}-u`,
+      id: userMsgRecord._id.toString(),
       sender: 'user',
       text: message,
-      timestamp: new Date().toISOString(),
+      timestamp: userMsgRecord.sentAt.toISOString(),
     };
     sessionHistory.push(userMsg);
 
@@ -64,18 +89,39 @@ export class AiTeacherService {
       })),
     });
 
+    // Record tutor response in MongoDB
+    const tutorMsgRecord = await this.messageModel.create({
+      conversationId,
+      senderId: 'ai-tutor',
+      senderName: 'Skillora Socratic Tutor',
+      senderRole: 'system',
+      recipientId: userId,
+      content: aiResult.response,
+      isRead: true,
+      sentAt: new Date(),
+    });
+
+    // Upsert conversation metadata
+    await this.conversationModel.findOneAndUpdate(
+      { participants: { $all: [userId, 'ai-tutor'] } },
+      {
+        participants: [userId, 'ai-tutor'],
+        lastMessageAt: new Date(),
+        lastMessagePreview: aiResult.response.slice(0, 100),
+      },
+      { upsert: true, new: true },
+    );
+
     const tutorMsg: TutorSessionMessage = {
-      id: `msg-${Date.now()}-t`,
+      id: tutorMsgRecord._id.toString(),
       sender: 'tutor',
       text: aiResult.response,
-      timestamp: new Date().toISOString(),
+      timestamp: tutorMsgRecord.sentAt.toISOString(),
       bloomsLevel: aiResult.bloomsLevel,
       citations,
       socraticHint: aiResult.socraticHint,
     };
     sessionHistory.push(tutorMsg);
-
-    this.sessions.set(sessionId, sessionHistory);
 
     return {
       reply: tutorMsg,
@@ -84,9 +130,19 @@ export class AiTeacherService {
     };
   }
 
-  getSessionHistory(userId: string, subject: string) {
-    const sessionId = `${userId}-${subject}`;
-    return this.sessions.get(sessionId) || [];
+  async getSessionHistory(userId: string, subject: string): Promise<TutorSessionMessage[]> {
+    const conversationId = `tutor-${userId}-${subject.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    const pastRecords = await this.messageModel
+      .find({ conversationId })
+      .sort({ sentAt: 1 })
+      .lean();
+
+    return pastRecords.map((m: any) => ({
+      id: m.id || m._id.toString(),
+      sender: m.senderId === userId ? 'user' : 'tutor',
+      text: m.content,
+      timestamp: m.sentAt ? new Date(m.sentAt).toISOString() : new Date().toISOString(),
+    }));
   }
 
   /**
