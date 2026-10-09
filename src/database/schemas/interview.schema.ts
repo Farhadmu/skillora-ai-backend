@@ -111,3 +111,33 @@ export class InterviewFeedback {
 
 export const InterviewFeedbackSchema = SchemaFactory.createForClass(InterviewFeedback);
 InterviewFeedbackSchema.index({ userId: 1, completedAt: -1 });
+
+export type InterviewDocument = Interview & Document;
+
+@Schema({ timestamps: true, collection: 'interviews' })
+export class Interview {
+  @Prop({ required: true, trim: true, index: true })
+  title: string;
+
+  @Prop({ required: true, index: true })
+  targetRole: string;
+
+  @Prop({
+    required: true,
+    enum: ['Technical', 'Behavioral', 'Coding', 'System Design', 'HR'],
+    default: 'Technical',
+  })
+  type: string;
+
+  @Prop({ default: 'Mid', enum: ['Entry', 'Mid', 'Senior', 'Lead'] })
+  difficulty: string;
+
+  @Prop({ type: [String], default: [] })
+  rubric: string[];
+
+  @Prop({ default: 30 })
+  durationMinutes: number;
+}
+
+export const InterviewSchema = SchemaFactory.createForClass(Interview);
+InterviewSchema.index({ targetRole: 1, type: 1 });

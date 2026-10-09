@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { DataStoreService, JobEntity, JobApplicationEntity } from '../../database/data-store.service';
 import { AiService } from '../ai/ai.service';
 
@@ -137,28 +137,55 @@ export class MarketplaceService {
   }
 
   /**
-   * Employer Pipeline Management
+   * Employer Pipeline Management with Strict Multi-Tenant Isolation
    */
-  getEmployerCandidates(companyId?: string) {
-    return Array.from(this.dataStore.applications.values()).map((app) => {
-      const user = this.dataStore.users.get(app.userId);
-      const profile = this.dataStore.profiles.get(app.userId);
-      return {
-        ...app,
-        candidateEmail: user?.email || profile?.email,
-        email: user?.email || profile?.email,
-        candidateName: profile?.name || user?.name || app.candidateName,
-        targetRole: profile?.targetRole,
-        readinessScore: profile?.readinessScore,
-      };
+  getEmployerCandidates(user: any) {
+    const isAdmin = user?.role === 'admin';
+    const employerJobs = Array.from(this.dataStore.jobs.values()).filter((j) => {
+      if (isAdmin) return true;
+      return (
+        j.ownerUserId === user.id ||
+        j.companyId === user.id ||
+        (user.companyName && j.companyName?.toLowerCase() === user.companyName.toLowerCase())
+      );
     });
+
+    const allowedJobIds = new Set(employerJobs.map((j) => j.id));
+
+    return Array.from(this.dataStore.applications.values())
+      .filter((app) => isAdmin || allowedJobIds.has(app.jobId))
+      .map((app) => {
+        const candidateUser = this.dataStore.users.get(app.userId);
+        const profile = this.dataStore.profiles.get(app.userId);
+        return {
+          ...app,
+          candidateEmail: candidateUser?.email || profile?.email,
+          email: candidateUser?.email || profile?.email,
+          candidateName: profile?.name || candidateUser?.name || app.candidateName,
+          targetRole: profile?.targetRole,
+          readinessScore: profile?.readinessScore,
+        };
+      });
   }
 
-  updateApplicationStage(applicationId: string, stage: JobApplicationEntity['status']) {
+  updateApplicationStage(applicationId: string, stage: JobApplicationEntity['status'], user: any) {
     const app = this.dataStore.applications.get(applicationId);
     if (!app) {
       throw new NotFoundException(`Application ${applicationId} not found`);
     }
+
+    const job = this.dataStore.jobs.get(app.jobId);
+    const isAdmin = user?.role === 'admin';
+    if (!isAdmin && job) {
+      const isOwner =
+        job.ownerUserId === user.id ||
+        job.companyId === user.id ||
+        (user.companyName && job.companyName?.toLowerCase() === user.companyName.toLowerCase());
+      if (!isOwner) {
+        throw new ForbiddenException('You do not have authorization to manage candidate pipelines for this job.');
+      }
+    }
+
     app.status = stage;
     this.dataStore.saveApplication(app);
 
@@ -180,14 +207,16 @@ export class MarketplaceService {
   }
 
   /**
-   * Post New Job Opening (Employer Studio)
+   * Post New Job Opening (Employer Studio) with Server-Derived Ownership
    */
-  createJob(jobData: Partial<JobEntity>) {
+  createJob(jobData: Partial<JobEntity>, user: any) {
     const jobId = `job-${Date.now()}`;
+    const companyName = user?.companyName || jobData.companyName || `${user?.name || 'Enterprise'} Inc.`;
     const newJob: JobEntity = {
       id: jobId,
-      companyId: jobData.companyId || 'comp-1',
-      companyName: jobData.companyName || 'Skillora Partner Technologies',
+      companyId: user?.id || 'comp-1',
+      ownerUserId: user?.id,
+      companyName,
       companyLogo: jobData.companyLogo || 'https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=128&q=80',
       title: jobData.title || 'Senior AI Systems Engineer',
       department: jobData.department || 'Engineering',
@@ -216,6 +245,7 @@ export class MarketplaceService {
 
     this.dataStore.logAnalyticsEvent({
       eventName: 'job_created',
+      userId: user?.id,
       metadata: { jobId, title: newJob.title, companyName: newJob.companyName },
     });
 
@@ -260,13 +290,24 @@ Return ONLY a JSON object matching this schema:
   /**
    * Generate Custom Interview Questions for a Candidate
    */
-  async generateInterviewQuestionsForCandidate(applicationId: string) {
+  async generateInterviewQuestionsForCandidate(applicationId: string, user: any) {
     const app = this.dataStore.applications.get(applicationId);
     if (!app) {
       throw new NotFoundException(`Application ${applicationId} not found`);
     }
 
     const job = this.dataStore.jobs.get(app.jobId);
+    const isAdmin = user?.role === 'admin';
+    if (!isAdmin && job) {
+      const isOwner =
+        job.ownerUserId === user.id ||
+        job.companyId === user.id ||
+        (user.companyName && job.companyName?.toLowerCase() === user.companyName.toLowerCase());
+      if (!isOwner) {
+        throw new ForbiddenException('You do not have authorization to view candidate telemetry for this job opening.');
+      }
+    }
+
     const profile = this.dataStore.profiles.get(app.userId);
 
     const prompt = `You are a Lead Hiring Architect interviewing candidate "${app.candidateName}" for the position "${app.jobTitle}" at "${app.companyName}".

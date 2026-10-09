@@ -35,14 +35,19 @@ export class AnalyticsService {
     };
   }
 
-  getEmployerFunnel(companyId?: string) {
+  getEmployerFunnel(user?: any) {
+    const isAdmin = user?.role === 'admin';
     const allApps = Array.from(this.dataStore.applications.values());
-    const apps = companyId
-      ? allApps.filter((a) => {
-          const job = this.dataStore.jobs.get(a.jobId);
-          return job?.companyId === companyId;
-        })
-      : allApps;
+    const employerJobs = Array.from(this.dataStore.jobs.values()).filter((j) => {
+      if (isAdmin || !user) return true;
+      return (
+        j.ownerUserId === user.id ||
+        j.companyId === user.id ||
+        (user.companyName && j.companyName?.toLowerCase() === user.companyName.toLowerCase())
+      );
+    });
+    const allowedJobIds = new Set(employerJobs.map((j) => j.id));
+    const apps = (isAdmin || !user) ? allApps : allApps.filter((a) => allowedJobIds.has(a.jobId));
 
     const applied = apps.length;
     const screening = apps.filter((a) => a.status === 'screening' || a.status === 'reviewing').length;

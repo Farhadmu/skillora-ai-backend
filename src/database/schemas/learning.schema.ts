@@ -199,3 +199,29 @@ export class Enrollment {
 
 export const EnrollmentSchema = SchemaFactory.createForClass(Enrollment);
 EnrollmentSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+
+export type LearningProgressDocument = LearningProgress & Document;
+
+@Schema({ timestamps: true, collection: 'learning_progress' })
+export class LearningProgress {
+  @Prop({ required: true, index: true })
+  userId: string;
+
+  @Prop({ required: true, index: true })
+  courseId: string;
+
+  @Prop({ type: [String], default: [] })
+  completedLessonIds: string[];
+
+  @Prop({ default: '' })
+  lastLessonId?: string;
+
+  @Prop({ default: 0, min: 0, max: 100 })
+  percentComplete: number;
+
+  @Prop({ default: () => new Date(), index: true })
+  lastStudiedAt: Date;
+}
+
+export const LearningProgressSchema = SchemaFactory.createForClass(LearningProgress);
+LearningProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true });

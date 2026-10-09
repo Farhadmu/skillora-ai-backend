@@ -7,19 +7,29 @@ async function bootstrap() {
   const logger = new Logger('SkilloraBootstrap');
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for frontend Next.js application
+  // Fail-fast JWT check
+  if (!process.env.JWT_SECRET) {
+    logger.error('FATAL: JWT_SECRET environment variable is missing. Application cannot start securely.');
+    process.exit(1);
+  }
+
+  // Explicit CORS origins
+  const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://skillora.ai', 'https://app.skillora.ai'];
+
   app.enableCors({
-    origin: '*',
+    origin: corsOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Global validation pipe
+  // Strict global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
     }),
   );
 

@@ -52,10 +52,10 @@ export class SearchService {
     // 5. Search Knowledge Chunks
     const knowledgeChunks = await this.ragService.retrieve(query, 3);
     const knowledge = knowledgeChunks.map((k) => ({
-      id: k.id,
+      id: k.chunk.id,
       type: 'knowledge',
-      title: k.topic,
-      subtitle: `${k.source} • Trust: ${k.trustLevel}`,
+      title: k.chunk.topic,
+      subtitle: `${k.chunk.source} • Trust: ${k.chunk.trustLevel}`,
     }));
 
     return {

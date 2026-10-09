@@ -83,3 +83,27 @@ export class User {
 export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ email: 1, role: 1 });
 UserSchema.index({ status: 1, createdAt: -1 });
+
+export type SessionDocument = Session & Document;
+
+@Schema({ timestamps: true, collection: 'sessions' })
+export class Session {
+  @Prop({ required: true, index: true })
+  userId: string;
+
+  @Prop({ required: true, index: true })
+  refreshTokenHash: string;
+
+  @Prop({ default: '' })
+  ipAddress?: string;
+
+  @Prop({ default: '' })
+  userAgent?: string;
+
+  @Prop({ required: true, index: true })
+  expiresAt: Date;
+}
+
+export const SessionSchema = SchemaFactory.createForClass(Session);
+SessionSchema.index({ userId: 1, expiresAt: 1 });
+SessionSchema.index({ refreshTokenHash: 1 });

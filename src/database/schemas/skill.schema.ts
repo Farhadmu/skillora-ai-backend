@@ -92,3 +92,52 @@ export class SkillEvidence {
 
 export const SkillEvidenceSchema = SchemaFactory.createForClass(SkillEvidence);
 SkillEvidenceSchema.index({ userId: 1, skillName: 1 });
+
+export type UserSkillDocument = UserSkill & Document;
+
+@Schema({ timestamps: true, collection: 'user_skills' })
+export class UserSkill {
+  @Prop({ required: true, index: true })
+  userId: string;
+
+  @Prop({ required: true, index: true })
+  skillId: string;
+
+  @Prop({ required: true, trim: true, index: true })
+  name: string;
+
+  @Prop({ default: 'General' })
+  category: string;
+
+  @Prop({ default: 0, min: 0, max: 100 })
+  proficiency: number;
+
+  @Prop({ default: 0, min: 0, max: 100 })
+  confidence: number;
+
+  @Prop({
+    default: 'SELF-DECLARED',
+    enum: ['SELF-DECLARED', 'AI-INFERRED', 'ASSESSMENT-VERIFIED', 'PROJECT-VERIFIED'],
+    index: true,
+  })
+  source: string;
+
+  @Prop({ default: false, index: true })
+  verified: boolean;
+
+  @Prop({ type: [String], default: [] })
+  evidence: string[];
+
+  @Prop({ default: null })
+  assessmentScore?: number;
+
+  @Prop({ default: null })
+  lastAssessedAt?: Date;
+
+  @Prop({ default: 0, min: 0, max: 100 })
+  learningProgress: number;
+}
+
+export const UserSkillSchema = SchemaFactory.createForClass(UserSkill);
+UserSkillSchema.index({ userId: 1, skillId: 1 }, { unique: true });
+UserSkillSchema.index({ userId: 1, verified: 1 });

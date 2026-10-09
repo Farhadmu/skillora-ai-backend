@@ -126,3 +126,61 @@ export class SkillGap {
 
 export const SkillGapSchema = SchemaFactory.createForClass(SkillGap);
 SkillGapSchema.index({ userId: 1, targetRole: 1 });
+
+export type CareerDocument = Career & Document;
+
+@Schema({ timestamps: true, collection: 'careers' })
+export class Career {
+  @Prop({ required: true, unique: true, trim: true, index: true })
+  title: string;
+
+  @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true })
+  slug: string;
+
+  @Prop({ required: true, index: true })
+  domain: string;
+
+  @Prop({ required: true })
+  description: string;
+
+  @Prop({ type: [String], required: true, index: true })
+  coreSkills: string[];
+
+  @Prop({ default: 85, min: 0, max: 100 })
+  marketDemandScore: number;
+
+  @Prop({ default: '$100,000 - $160,000' })
+  averageSalaryRange: string;
+
+  @Prop({ type: [String], default: [] })
+  entryRequirements: string[];
+}
+
+export const CareerSchema = SchemaFactory.createForClass(Career);
+CareerSchema.index({ title: 'text', description: 'text', coreSkills: 'text' });
+
+export type CareerPathDocument = CareerPath & Document;
+
+@Schema({ timestamps: true, collection: 'career_paths' })
+export class CareerPath {
+  @Prop({ required: true, index: true })
+  fromRole: string;
+
+  @Prop({ required: true, index: true })
+  toRole: string;
+
+  @Prop({ default: 'Moderate', enum: ['Easy', 'Moderate', 'Challenging', 'Pivot'] })
+  transitionDifficulty: string;
+
+  @Prop({ type: [String], default: [] })
+  requiredNewSkills: string[];
+
+  @Prop({ default: 4 })
+  estimatedMonths: number;
+
+  @Prop({ default: '' })
+  roadmapSummary: string;
+}
+
+export const CareerPathSchema = SchemaFactory.createForClass(CareerPath);
+CareerPathSchema.index({ fromRole: 1, toRole: 1 });

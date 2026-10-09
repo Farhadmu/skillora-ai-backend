@@ -110,6 +110,7 @@ export interface LearnerProfileEntity {
 export interface JobEntity {
   id: string;
   companyId: string;
+  ownerUserId?: string;
   companyName: string;
   companyLogo: string;
   title: string;
@@ -129,6 +130,7 @@ export interface JobEntity {
 
 export interface CompanyEntity {
   id: string;
+  ownerUserId?: string;
   name: string;
   logo: string;
   domain: string;
@@ -469,47 +471,6 @@ export class DataStoreService implements OnModuleInit {
     }
   }
 
-  private async seedInitialData() {
-    const passwordHash = await bcrypt.hash('Password123!', 10);
-
-    for (const u of SEED_USERS) {
-      this.users.set(u.id, {
-        ...u,
-        passwordHash,
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    this.profiles.set(PRIMARY_LEARNER_PROFILE.userId, PRIMARY_LEARNER_PROFILE as LearnerProfileEntity);
-
-    for (const c of SEED_COMPANIES) {
-      this.companies.set(c.id, c);
-    }
-
-    for (const s of SEED_SKILLS) {
-      this.skills.set(s.id, s as SkillEntity);
-    }
-
-    for (const j of SEED_JOBS) {
-      this.jobs.set(j.id, j as JobEntity);
-    }
-
-    for (const a of SEED_ASSESSMENTS) {
-      this.assessments.set(a.id, a as AssessmentEntity);
-    }
-
-    for (const c of SEED_COURSES) {
-      this.courses.set(c.id, c);
-    }
-
-    for (const p of SEED_PROJECTS) {
-      this.projects.set(p.id, p as ProjectEntity);
-    }
-
-    this.roadmaps.set(SEED_ROADMAP.id, SEED_ROADMAP as RoadmapEntity);
-    this.applications.set(SEED_APPLICATION.id, SEED_APPLICATION as JobApplicationEntity);
-  }
-
   // ==========================================
   // PERSISTENCE HELPER METHODS FOR MODULES
   // ==========================================
@@ -518,7 +479,9 @@ export class DataStoreService implements OnModuleInit {
     this.users.set(user.id, user);
     this.persistToDisk();
     if (this.userModel) {
-      this.userModel.updateOne({ email: user.email }, { $set: user }, { upsert: true }).catch(() => {});
+      this.userModel.updateOne({ email: user.email }, { $set: user }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist user ${user.email} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -526,7 +489,9 @@ export class DataStoreService implements OnModuleInit {
     this.profiles.set(profile.userId, profile);
     this.persistToDisk();
     if (this.profileModel) {
-      this.profileModel.updateOne({ userId: profile.userId }, { $set: profile }, { upsert: true }).catch(() => {});
+      this.profileModel.updateOne({ userId: profile.userId }, { $set: profile }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist profile ${profile.userId} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -534,7 +499,9 @@ export class DataStoreService implements OnModuleInit {
     this.jobs.set(job.id, job);
     this.persistToDisk();
     if (this.jobModel) {
-      this.jobModel.updateOne({ id: job.id }, { $set: job }, { upsert: true }).catch(() => {});
+      this.jobModel.updateOne({ id: job.id }, { $set: job }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist job ${job.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -542,7 +509,9 @@ export class DataStoreService implements OnModuleInit {
     this.applications.set(application.id, application);
     this.persistToDisk();
     if (this.applicationModel) {
-      this.applicationModel.updateOne({ id: application.id }, { $set: application }, { upsert: true }).catch(() => {});
+      this.applicationModel.updateOne({ id: application.id }, { $set: application }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist application ${application.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -550,7 +519,9 @@ export class DataStoreService implements OnModuleInit {
     this.roadmaps.set(roadmap.id, roadmap);
     this.persistToDisk();
     if (this.roadmapModel) {
-      this.roadmapModel.updateOne({ id: roadmap.id }, { $set: roadmap }, { upsert: true }).catch(() => {});
+      this.roadmapModel.updateOne({ id: roadmap.id }, { $set: roadmap }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist roadmap ${roadmap.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -558,7 +529,9 @@ export class DataStoreService implements OnModuleInit {
     this.companies.set(company.id, company);
     this.persistToDisk();
     if (this.companyModel) {
-      this.companyModel.updateOne({ id: company.id }, { $set: company }, { upsert: true }).catch(() => {});
+      this.companyModel.updateOne({ id: company.id }, { $set: company }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist company ${company.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -566,7 +539,9 @@ export class DataStoreService implements OnModuleInit {
     this.skills.set(skill.id, skill);
     this.persistToDisk();
     if (this.skillModel) {
-      this.skillModel.updateOne({ id: skill.id }, { $set: skill }, { upsert: true }).catch(() => {});
+      this.skillModel.updateOne({ id: skill.id }, { $set: skill }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist skill ${skill.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -574,7 +549,9 @@ export class DataStoreService implements OnModuleInit {
     this.assessments.set(assessment.id, assessment);
     this.persistToDisk();
     if (this.assessmentModel) {
-      this.assessmentModel.updateOne({ id: assessment.id }, { $set: assessment }, { upsert: true }).catch(() => {});
+      this.assessmentModel.updateOne({ id: assessment.id }, { $set: assessment }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist assessment ${assessment.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -582,7 +559,9 @@ export class DataStoreService implements OnModuleInit {
     this.courses.set(course.id, course);
     this.persistToDisk();
     if (this.courseModel) {
-      this.courseModel.updateOne({ id: course.id }, { $set: course }, { upsert: true }).catch(() => {});
+      this.courseModel.updateOne({ id: course.id }, { $set: course }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist course ${course.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -590,7 +569,9 @@ export class DataStoreService implements OnModuleInit {
     this.projects.set(project.id, project);
     this.persistToDisk();
     if (this.projectModel) {
-      this.projectModel.updateOne({ id: project.id }, { $set: project }, { upsert: true }).catch(() => {});
+      this.projectModel.updateOne({ id: project.id }, { $set: project }, { upsert: true }).catch((err: any) => {
+        this.logger.error(`Failed to persist project ${project.id} to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -600,7 +581,9 @@ export class DataStoreService implements OnModuleInit {
     this.assessmentAttempts.set(id, doc);
     this.persistToDisk();
     if (this.attemptModel) {
-      this.attemptModel.create(doc).catch(() => {});
+      this.attemptModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record assessment attempt to MongoDB: ${err.message}`);
+      });
     }
     return id;
   }
@@ -611,7 +594,9 @@ export class DataStoreService implements OnModuleInit {
     this.skillEvidences.set(id, doc);
     this.persistToDisk();
     if (this.evidenceModel) {
-      this.evidenceModel.create(doc).catch(() => {});
+      this.evidenceModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record skill evidence to MongoDB: ${err.message}`);
+      });
     }
     return id;
   }
@@ -622,7 +607,9 @@ export class DataStoreService implements OnModuleInit {
     this.notifications.set(id, doc);
     this.persistToDisk();
     if (this.notificationModel) {
-      this.notificationModel.create(doc).catch(() => {});
+      this.notificationModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record notification to MongoDB: ${err.message}`);
+      });
     }
     return id;
   }
@@ -632,7 +619,9 @@ export class DataStoreService implements OnModuleInit {
     this.analyticsEvents.push(doc);
     this.persistToDisk();
     if (this.analyticsModel) {
-      this.analyticsModel.create(doc).catch(() => {});
+      this.analyticsModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record analytics event to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -641,7 +630,9 @@ export class DataStoreService implements OnModuleInit {
     this.aiUsages.push(doc);
     this.persistToDisk();
     if (this.aiUsageModel) {
-      this.aiUsageModel.create(doc).catch(() => {});
+      this.aiUsageModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record AI usage to MongoDB: ${err.message}`);
+      });
     }
   }
 
@@ -650,7 +641,9 @@ export class DataStoreService implements OnModuleInit {
     this.auditLogs.push(doc);
     this.persistToDisk();
     if (this.auditModel) {
-      this.auditModel.create(doc).catch(() => {});
+      this.auditModel.create(doc).catch((err: any) => {
+        this.logger.error(`Failed to record audit log to MongoDB: ${err.message}`);
+      });
     }
   }
 }

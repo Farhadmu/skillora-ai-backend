@@ -152,7 +152,6 @@ export class AuthService {
       message: dispatch.dispatchNotice,
       user: this.sanitizeUser(newUser),
       tokens,
-      verificationUrl,
     };
   }
 
@@ -251,7 +250,6 @@ export class AuthService {
     return {
       success: true,
       message: dispatch.dispatchNotice,
-      verificationUrl,
     };
   }
 
@@ -329,7 +327,6 @@ export class AuthService {
     return {
       success: true,
       message: dispatch.dispatchNotice,
-      resetUrl,
     };
   }
 

@@ -13,9 +13,17 @@ yarn-error.log*
 
 # environment variables
 .env
-.env.local
-.env.production
+.env.*
 !.env.example
+
+# persistence & data
+data/
+db-persistence.json
+*.tmp
+
+# logs
+logs/
+*.log
 
 # build info
 *.tsbuildinfo

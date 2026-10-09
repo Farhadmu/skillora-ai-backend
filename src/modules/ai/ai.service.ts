@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface AiProviderStatus {
@@ -243,8 +243,11 @@ export class AiService {
       }
     }
 
-    // 8. High-Fidelity Deterministic Fallback Engine
-    return this.fallbackTextGenerator(prompt);
+    // If all providers failed or are not configured
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI analysis is temporarily unavailable. Please configure an AI provider API key (e.g., GEMINI_API_KEY, GROQ_API_KEY) in the backend environment.',
+    });
   }
 
   /**
@@ -314,15 +317,14 @@ export class AiService {
       } catch (e) {}
     }
 
-    // Fallback response
-    const output = this.fallbackTextGenerator(testPrompt);
+    // If no provider responded
     return {
-      providerUsed: 'Skillora Deterministic Neural Engine (Always-Online Fallback)',
-      model: 'skillora-semantic-heuristics-v2',
+      providerUsed: 'None (No responding provider)',
+      model: 'none',
       latencyMs: Date.now() - startTime,
-      outputPreview: output.slice(0, 160),
+      outputPreview: 'No AI providers currently operational. Please configure GEMINI_API_KEY or GROQ_API_KEY.',
       timestamp: new Date().toISOString(),
-      status: 'OPTIMAL',
+      status: 'DEGRADED_FALLBACK',
     };
   }
 
@@ -554,11 +556,13 @@ Return ONLY a valid JSON object matching this schema:
         }
       }
     } catch (err: any) {
-      this.logger.warn(`AI Quiz generation fallback: ${err.message}`);
+      this.logger.warn(`AI Quiz generation failed: ${err.message}`);
     }
 
-    // High-Fidelity Deterministic Fallback Assessment
-    return this.fallbackQuizGenerator(topic, category, difficulty, count);
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI Assessment Quiz generation is temporarily unavailable. Please try again.',
+    });
   }
 
   private fallbackQuizGenerator(topic: string, category: string, difficulty: 'Beginner' | 'Intermediate' | 'Advanced', count: number) {
@@ -714,10 +718,13 @@ Return ONLY a valid JSON object matching this schema:
         };
       }
     } catch (err: any) {
-      this.logger.warn(`AI Tutor chat fallback used: ${err.message}`);
+      this.logger.warn(`AI Tutor chat failed: ${err.message}`);
     }
 
-    return this.fallbackTutor(message, mode, subject, preferredLanguage);
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI Tutor is temporarily unavailable. Please try again.',
+    });
   }
 
   /**
@@ -758,39 +765,13 @@ Return ONLY a valid JSON object matching this schema:
         return JSON.parse(jsonMatch[0]);
       }
     } catch (err: any) {
-      this.logger.warn(`AI Quiz Generation fallback used: ${err.message}`);
+      this.logger.warn(`AI Quiz Generation failed: ${err.message}`);
     }
 
-    return {
-      title: `${topic} Applied Diagnostic Assessment`,
-      topic,
-      questions: [
-        {
-          id: 'q-gen-1',
-          prompt: `In modern ${topic} architecture, what is the primary consideration when designing for horizontal scalability and stateless failover?`,
-          options: [
-            'Storing session tokens in local disk memory.',
-            'Decoupling state to distributed caches like Redis and adhering to 12-factor application principles.',
-            'Disabling HTTP keep-alive sockets.',
-            'Increasing server RAM without clustering.',
-          ],
-          correctAnswer: 1,
-          explanation: 'Decoupling session state to distributed data layers allows web nodes to scale horizontally without sticky-session dependencies.',
-        },
-        {
-          id: 'q-gen-2',
-          prompt: `When securing API endpoints in ${topic}, which defense best prevents denial-of-service through resource starvation?`,
-          options: [
-            'Disabling CORS completely.',
-            'Implementing token-bucket rate limiting and schema input boundary validation.',
-            'Increasing database timeout intervals.',
-            'Removing authentication tokens on GET requests.',
-          ],
-          correctAnswer: 1,
-          explanation: 'Token-bucket rate limiting paired with strict input validation stops volumetric request flooding before business logic execution.',
-        },
-      ],
-    };
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI Quiz Generation is temporarily unavailable. Please try again.',
+    });
   }
 
   /**
@@ -818,10 +799,13 @@ Return ONLY a valid JSON object matching this schema:
         return JSON.parse(jsonMatch[0]);
       }
     } catch (err: any) {
-      this.logger.warn(`JD Analysis fallback used: ${err.message}`);
+      this.logger.warn(`JD Analysis failed: ${err.message}`);
     }
 
-    return this.fallbackJdAnalysis(jdText, userSkills);
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI job description analysis is temporarily unavailable. Please try again.',
+    });
   }
 
   /**
@@ -854,10 +838,13 @@ Return ONLY a valid JSON object matching this schema:
         return JSON.parse(jsonMatch[0]);
       }
     } catch (err: any) {
-      this.logger.warn(`Roadmap generation fallback used: ${err.message}`);
+      this.logger.warn(`Roadmap generation failed: ${err.message}`);
     }
 
-    return this.fallbackRoadmap(targetRole, currentSkills, durationDays);
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI roadmap generation is temporarily unavailable. Please try again.',
+    });
   }
 
   /**
@@ -889,10 +876,13 @@ Return ONLY a valid JSON object matching this schema:
         return JSON.parse(jsonMatch[0]);
       }
     } catch (err: any) {
-      this.logger.warn(`Code review fallback used: ${err.message}`);
+      this.logger.warn(`Code review failed: ${err.message}`);
     }
 
-    return this.fallbackCodeReview(code, language);
+    throw new ServiceUnavailableException({
+      code: 'AI_PROVIDER_UNAVAILABLE',
+      message: 'AI code review analysis is temporarily unavailable. Please try again.',
+    });
   }
 
   /**
@@ -939,276 +929,12 @@ Return ONLY a valid JSON object matching this schema:
           return JSON.parse(jsonMatch[0]);
         }
       } catch (err: any) {
-        this.logger.warn(`Mock interview fallback used: ${err.message}`);
-      }
-    }
-
-    return this.fallbackMockInterview(params);
-  }
-
-  // ==========================================
-  // HIGH-FIDELITY DETERMINISTIC FALLBACKS
-  // ==========================================
-
-  private fallbackTextGenerator(prompt: string): string {
-    return `Skillora AI Analysis:\n\nBased on workforce telemetry and skill graphs, the optimal trajectory focuses on high-leverage architectural patterns, hands-on production code, and automated verification. Ensure rigorous test coverage and clear system boundaries.`;
-  }
-
-  private fallbackCvParser(cvText: string) {
-    const lower = cvText.toLowerCase();
-    const detectedSkills: Array<{ name: string; category: string; confidence: number; evidence: string[] }> = [];
-
-    const skillCatalog: Record<string, { cat: string; conf: number }> = {
-      python: { cat: 'Programming', conf: 88 },
-      javascript: { cat: 'Frontend', conf: 85 },
-      typescript: { cat: 'Frontend/Backend', conf: 86 },
-      react: { cat: 'Frontend', conf: 89 },
-      'next.js': { cat: 'Frontend', conf: 87 },
-      nodejs: { cat: 'Backend', conf: 84 },
-      nestjs: { cat: 'Backend', conf: 85 },
-      mongodb: { cat: 'Database', conf: 82 },
-      postgresql: { cat: 'Database', conf: 80 },
-      docker: { cat: 'DevOps', conf: 78 },
-      kubernetes: { cat: 'DevOps', conf: 72 },
-      aws: { cat: 'Cloud', conf: 76 },
-      git: { cat: 'Version Control', conf: 92 },
-      rag: { cat: 'AI/ML', conf: 84 },
-      gemini: { cat: 'AI/ML', conf: 86 },
-      groq: { cat: 'AI/ML', conf: 85 },
-      graphql: { cat: 'API', conf: 75 },
-      tailwind: { cat: 'CSS/Frontend', conf: 90 },
-    };
-
-    for (const [skill, meta] of Object.entries(skillCatalog)) {
-      if (lower.includes(skill)) {
-        detectedSkills.push({
-          name: skill.charAt(0).toUpperCase() + skill.slice(1),
-          category: meta.cat,
-          confidence: meta.conf,
-          evidence: [`Direct mentions in work history`, `Identified in portfolio repository`],
+        this.logger.warn(`Mock interview evaluation failed: ${err.message}`);
+        throw new ServiceUnavailableException({
+          code: 'AI_PROVIDER_UNAVAILABLE',
+          message: 'AI interview evaluation is temporarily unavailable. Please try again.',
         });
       }
-    }
-
-    if (detectedSkills.length === 0) {
-      detectedSkills.push(
-        { name: 'TypeScript', category: 'Language', confidence: 85, evidence: ['Demonstrated project experience'] },
-        { name: 'NestJS', category: 'Backend', confidence: 80, evidence: ['API architecture history'] },
-        { name: 'React', category: 'Frontend', confidence: 88, evidence: ['Client dashboard implementation'] },
-      );
-    }
-
-    return {
-      fullName: 'Farhadul Islam',
-      headline: 'Full-Stack Software Engineer & AI System Architect',
-      extractedSkills: detectedSkills,
-      experienceYears: 3,
-      education: [
-        {
-          institution: 'State University of Technology',
-          degree: 'B.Sc. in Computer Science & Engineering',
-          year: '2024',
-        },
-      ],
-      projects: [
-        {
-          title: 'Skillora AI Platform',
-          techStack: ['Next.js', 'NestJS', 'MongoDB', 'Gemini AI', 'Tailwind'],
-          description: 'AI Workforce Intelligence platform with adaptive learning and skill verification.',
-        },
-        {
-          title: 'Autonomous Multi-Agent RAG Pipeline',
-          techStack: ['Python', 'Qdrant', 'FastAPI', 'LangChain'],
-          description: 'Vector-grounded document intelligence pipeline with citation indexing.',
-        },
-      ],
-      completenessScore: 88,
-    };
-  }
-
-  private fallbackTutor(
-    message: string,
-    mode: string,
-    subject: string,
-    lang: 'en' | 'bn',
-  ) {
-    if (lang === 'bn') {
-      return {
-        response: `চমৎকার প্রশ্ন! ${subject}-এর ক্ষেত্রে এই ধারণাটি অত্যন্ত গুরুত্বপূর্ণ। 
-
-প্রথমে ভাবুন: যখন কোনো সিস্টেমে ডেটা ফ্লো ঘটে, তখন কন্ট্রোল এবং ডিপেনডেন্সি কীভাবে ইনভার্ট করা যায়? আপনি কি Dependency Injection এবং Inversion of Control-এর মূল পার্থক্যটি ব্যাখ্যা করতে পারবেন?
-
-একটি বাস্তব উদাহরণ দিয়ে চেষ্টা করুন, আমি আপনাকে পরবর্তী ধাপে গাইড করব।`,
-        bloomsLevel: 'Analyze',
-        socraticHint: 'লক্ষ্য করুন কিভাবে ফ্রেমওয়ার্ক ক্লাস ইনস্ট্যান্টশিয়েট করে বনাম ডেভেলপার সরাসরি new কিওয়ার্ড কল করে।',
-        suggestedTopics: [`${subject} আর্কিটেকচার`, 'প্রোডাকশন অপ্টিমাইজেশন', 'রিয়েল-টাইম হ্যান্ডস-অন প্র্যাকটিস'],
-      };
-    }
-
-    return {
-      response: `That is a fundamental question in ${subject}. 
-
-To unpack this systematically: before we jump straight to implementation, what core trade-off are you balancing between memory consumption, execution latency, and architectural maintainability?
-
-Consider how asynchronous event loops schedule microtasks vs macrotasks. If you had 10,000 concurrent requests, where would the primary bottleneck emerge?`,
-      bloomsLevel: 'Analyze',
-      socraticHint: 'Look closely at non-blocking I/O callbacks vs CPU-bound thread execution.',
-      suggestedTopics: [
-        `${subject} Deep Dive`,
-        'Concurrent Workflows & Bottlenecks',
-        'Production Benchmarking',
-      ],
-    };
-  }
-
-  private fallbackJdAnalysis(jdText: string, userSkills: string[]) {
-    const requiredSkills = ['TypeScript', 'NestJS', 'React', 'MongoDB', 'Docker', 'REST API', 'RAG'];
-    const preferredSkills = ['Kubernetes', 'Qdrant', 'Microservices', 'GraphQL', 'AWS'];
-
-    const userSkillSet = new Set(userSkills.map((s) => s.toLowerCase()));
-    const strongMatches = requiredSkills.filter((s) => userSkillSet.has(s.toLowerCase()));
-    const missingSkills = requiredSkills.filter((s) => !userSkillSet.has(s.toLowerCase()));
-    const weakSkills = preferredSkills.filter((s) => !userSkillSet.has(s.toLowerCase()));
-
-    const matchScore = Math.round((strongMatches.length / requiredSkills.length) * 100);
-
-    return {
-      role: 'Senior Full-Stack & AI Systems Engineer',
-      requiredSkills,
-      preferredSkills,
-      matchScore: Math.max(matchScore, 78),
-      strongMatches: strongMatches.length ? strongMatches : ['TypeScript', 'React', 'REST API'],
-      missingSkills: missingSkills.slice(0, 3),
-      weakSkills: weakSkills.slice(0, 3),
-      actionPlan: [
-        'Complete the advanced Docker & Container Orchestration lab',
-        'Take the Vector Search & RAG Architecture assessment',
-        'Submit a verified GitHub project demonstrating microservice event streaming',
-      ],
-    };
-  }
-
-  private fallbackRoadmap(targetRole: string, currentSkills: string[], durationDays: number) {
-    return {
-      role: targetRole,
-      durationDays,
-      summary: `A high-impact ${durationDays}-day personalized trajectory engineered to bridge your gap toward verified ${targetRole} employability.`,
-      milestones: [
-        {
-          dayRange: 'Day 1 - 7',
-          title: 'Foundations & Architectural Rigor',
-          focusSkill: 'Advanced TypeScript & Clean Architecture',
-          learningObjectives: [
-            'Master strict typing, generics, and conditional type mapping',
-            'Understand Dependency Injection, Modules, and Clean Layering',
-          ],
-          tasks: [
-            'Refactor generic service layer into repository pattern',
-            'Implement centralized validation pipes with class-validator',
-          ],
-          projectPrompt: 'Build an authenticated telemetry ingestion gateway with rate limiting',
-          assessmentTopic: 'TypeScript & Enterprise Backend Patterns',
-        },
-        {
-          dayRange: 'Day 8 - 21',
-          title: 'AI Native Systems & Retrieval-Augmented Generation',
-          focusSkill: 'Gemini & Groq Vector Retrieval',
-          learningObjectives: [
-            'Chunk documents with semantic preservation',
-            'Connect vector stores with hybrid BM25 and cosine distance',
-            'Implement grounded answer generation with verifiable citations',
-          ],
-          tasks: [
-            'Create RAG vector indexing pipeline',
-            'Evaluate hallucinations using citation verification',
-          ],
-          projectPrompt: 'Develop a Multi-Tenant Knowledge Assistant with Qdrant indexing',
-          assessmentTopic: 'Vector Embeddings, RAG & LLM Guardrails',
-        },
-        {
-          dayRange: 'Day 22 - 30',
-          title: 'Production Readiness, Observability & Verification',
-          focusSkill: 'Dockerization, CI/CD & Portfolio Proof',
-          learningObjectives: [
-            'Docker multi-stage builds and security scanning',
-            'Readiness scoring and mock interview mastery',
-          ],
-          tasks: [
-            'Publish verified project demo to talent marketplace',
-            'Complete AI Mock Technical & System Design Interviews',
-          ],
-          projectPrompt: 'Deploy full-stack Skillora AI node with structured logging',
-          assessmentTopic: 'Full-Stack System Design & Production Deployment',
-        },
-      ],
-    };
-  }
-
-  private fallbackCodeReview(code: string, language: string) {
-    const lines = code.split('\n').length;
-    const hasTryCatch = code.includes('try') && code.includes('catch');
-    const hasConsoleLog = code.includes('console.log');
-
-    const issues: string[] = [];
-    if (hasConsoleLog) issues.push('Avoid console.log in production code; use structured logger');
-    if (!hasTryCatch) issues.push('Add comprehensive error handling around asynchronous I/O');
-    if (lines > 60) issues.push('Consider decomposing this large routine into smaller pure functions');
-
-    return {
-      score: 84,
-      summary: `Clean and idiomatic ${language} code with solid logical flow. Opportunities exist for enhanced error telemetry and strict input sanitization.`,
-      correctness: { score: 88, notes: 'Core execution logic produces expected outputs with appropriate control branches.' },
-      security: { score: 82, issues: issues.length ? issues : ['Verify input bounds and escape unsanitized inputs'] },
-      performance: { score: 86, suggestions: ['Leverage caching or memoization on repetitive database reads'] },
-      maintainability: { score: 85, recommendations: ['Add descriptive JSDoc/TSDoc annotations for public module contracts'] },
-      refactoredSnippet: `// Skillora AI Optimized Refactor
-import { Logger } from '@nestjs/common';
-
-export async function executeOptimizedTask(input: unknown): Promise<void> {
-  const logger = new Logger('OptimizedTask');
-  try {
-    // Sanitized and validated execution
-    logger.log('Executing high-throughput task safely');
-  } catch (error) {
-    logger.error('Failed to execute task', (error as Error).stack);
-    throw error;
-  }
-}`,
-    };
-  }
-
-  private fallbackMockInterview(params: {
-    mode: string;
-    targetRole: string;
-    questionNumber: number;
-    candidateAnswer?: string;
-  }) {
-    if (params.questionNumber >= 4) {
-      return {
-        question: 'Interview completed. Review your verified diagnostic report below.',
-        rubric: ['Technical Mastery', 'Clarity of Thought', 'Handling Trade-offs'],
-        isComplete: true,
-        feedbackOnPrevious: {
-          technicalScore: 86,
-          communicationScore: 82,
-          strengths: ['Clear explanation of architectural trade-offs', 'Accurate indexing concepts'],
-          areasToImprove: ['Could discuss disaster recovery and replication lag deeper'],
-          sampleBetterAnswer: 'I would evaluate read replicas and multi-region failover alongside quorum consistency.',
-        },
-        finalEvaluation: {
-          overallScore: 84,
-          technicalScore: 86,
-          communicationScore: 83,
-          problemSolvingScore: 85,
-          roleReadinessScore: 82,
-          verdict: 'Job Ready - Recommended for Senior Fullstack / AI Engineer Interviews',
-          detailedRecommendations: [
-            'Deepen system design discussions around distributed cache invalidation strategies.',
-            'Practice articulating failure modes under network partition conditions (CAP theorem).',
-            'Add verified benchmarks to your portfolio projects to showcase quantified scale.',
-          ],
-        },
-      };
     }
 
     const questionBank: Record<string, string[]> = {
@@ -1245,15 +971,57 @@ export async function executeOptimizedTask(input: unknown): Promise<void> {
         'Structure of explanation (STAR / Architectural framing)',
         'Mention of edge cases and trade-offs',
       ],
-      feedbackOnPrevious: params.candidateAnswer
-        ? {
-            technicalScore: 84,
-            communicationScore: 80,
-            strengths: ['Identified core mechanism accurately', 'Structured answer logically'],
-            areasToImprove: ['Address edge cases like high load or cold start'],
-            sampleBetterAnswer: 'I would emphasize defensive rate limiting and fail-soft degradation alongside primary logic.',
-          }
-        : undefined,
+    };
+  }
+
+  // ==========================================
+  // DETERMINISTIC CV PARSER (ZERO FAKE DATA)
+  // ==========================================
+
+  private fallbackCvParser(cvText: string) {
+    const lower = cvText.toLowerCase();
+    const detectedSkills: Array<{ name: string; category: string; confidence: number; evidence: string[] }> = [];
+
+    const skillCatalog: Record<string, { cat: string; conf: number }> = {
+      python: { cat: 'Programming', conf: 85 },
+      javascript: { cat: 'Frontend', conf: 85 },
+      typescript: { cat: 'Frontend/Backend', conf: 85 },
+      react: { cat: 'Frontend', conf: 85 },
+      'next.js': { cat: 'Frontend', conf: 85 },
+      nodejs: { cat: 'Backend', conf: 85 },
+      nestjs: { cat: 'Backend', conf: 85 },
+      mongodb: { cat: 'Database', conf: 80 },
+      postgresql: { cat: 'Database', conf: 80 },
+      docker: { cat: 'DevOps', conf: 75 },
+      kubernetes: { cat: 'DevOps', conf: 70 },
+      aws: { cat: 'Cloud', conf: 75 },
+      git: { cat: 'Version Control', conf: 85 },
+      rag: { cat: 'AI/ML', conf: 80 },
+      gemini: { cat: 'AI/ML', conf: 80 },
+      groq: { cat: 'AI/ML', conf: 80 },
+      graphql: { cat: 'API', conf: 75 },
+      tailwind: { cat: 'CSS/Frontend', conf: 85 },
+    };
+
+    for (const [skill, meta] of Object.entries(skillCatalog)) {
+      if (lower.includes(skill)) {
+        detectedSkills.push({
+          name: skill.charAt(0).toUpperCase() + skill.slice(1),
+          category: meta.cat,
+          confidence: meta.conf,
+          evidence: [`Direct keyword detection in uploaded CV document: "${skill}"`],
+        });
+      }
+    }
+
+    return {
+      fullName: '',
+      headline: '',
+      extractedSkills: detectedSkills,
+      experienceYears: 0,
+      education: [],
+      projects: [],
+      completenessScore: Math.min(detectedSkills.length * 6, 60),
     };
   }
 }

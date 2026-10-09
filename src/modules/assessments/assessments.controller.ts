@@ -2,6 +2,9 @@ import { Controller, Get, Post, Param, Body, Query, UseGuards } from '@nestjs/co
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AssessmentsService } from './assessments.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../common/enums/roles.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @ApiTags('Assessments & Skill Verification')
@@ -22,7 +25,8 @@ export class AssessmentsController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EDUCATOR, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a new verified assessment in the catalog' })
   create(@Body() body: any) {
@@ -30,7 +34,8 @@ export class AssessmentsController {
   }
 
   @Post(':id/submit')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.LEARNER, Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Submit assessment responses, calculate score, and verify skill' })
   submit(

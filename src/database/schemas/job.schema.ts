@@ -173,3 +173,119 @@ export class SavedJob {
 
 export const SavedJobSchema = SchemaFactory.createForClass(SavedJob);
 SavedJobSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+
+export type JobRequirementDocument = JobRequirement & Document;
+
+@Schema({ timestamps: true, collection: 'job_requirements' })
+export class JobRequirement {
+  @Prop({ required: true, index: true })
+  jobId: string;
+
+  @Prop({ required: true })
+  skillName: string;
+
+  @Prop({ default: 75, min: 0, max: 100 })
+  minimumProficiency: number;
+
+  @Prop({ default: true })
+  mandatory: boolean;
+
+  @Prop({ default: 1 })
+  weight: number;
+}
+
+export const JobRequirementSchema = SchemaFactory.createForClass(JobRequirement);
+JobRequirementSchema.index({ jobId: 1, skillName: 1 });
+
+export type CandidateMatchDocument = CandidateMatch & Document;
+
+@Schema({ timestamps: true, collection: 'candidate_matches' })
+export class CandidateMatch {
+  @Prop({ required: true, index: true })
+  jobId: string;
+
+  @Prop({ required: true, index: true })
+  userId: string;
+
+  @Prop({ required: true, min: 0, max: 100, index: true })
+  overallScore: number;
+
+  @Prop({ type: [String], default: [] })
+  matchedSkills: string[];
+
+  @Prop({ type: [String], default: [] })
+  missingSkills: string[];
+
+  @Prop({ default: '' })
+  aiRationale: string;
+
+  @Prop({ default: () => new Date(), index: true })
+  calculatedAt: Date;
+}
+
+export const CandidateMatchSchema = SchemaFactory.createForClass(CandidateMatch);
+CandidateMatchSchema.index({ jobId: 1, overallScore: -1 });
+CandidateMatchSchema.index({ userId: 1, jobId: 1 }, { unique: true });
+
+export type ShortlistDocument = Shortlist & Document;
+
+@Schema({ timestamps: true, collection: 'shortlists' })
+export class Shortlist {
+  @Prop({ required: true, index: true })
+  employerUserId: string;
+
+  @Prop({ required: true, index: true })
+  companyId: string;
+
+  @Prop({ required: true, index: true })
+  jobId: string;
+
+  @Prop({ required: true, index: true })
+  candidateUserId: string;
+
+  @Prop({ default: '' })
+  notes?: string;
+
+  @Prop({ default: () => new Date() })
+  addedAt: Date;
+}
+
+export const ShortlistSchema = SchemaFactory.createForClass(Shortlist);
+ShortlistSchema.index({ employerUserId: 1, jobId: 1, candidateUserId: 1 }, { unique: true });
+
+export type HiringPipelineDocument = HiringPipeline & Document;
+
+@Schema({ timestamps: true, collection: 'hiring_pipelines' })
+export class HiringPipeline {
+  @Prop({ required: true, index: true })
+  companyId: string;
+
+  @Prop({ required: true, index: true })
+  jobId: string;
+
+  @Prop({ required: true, index: true })
+  applicationId: string;
+
+  @Prop({ required: true, index: true })
+  candidateUserId: string;
+
+  @Prop({
+    required: true,
+    enum: ['applied', 'screening', 'shortlisted', 'technical_interview', 'final_interview', 'offered', 'hired', 'rejected'],
+    default: 'applied',
+    index: true,
+  })
+  stage: string;
+
+  @Prop({ type: [Object], default: [] })
+  stageHistory: Array<{
+    stage: string;
+    changedAt: Date;
+    changedByUserId: string;
+    notes?: string;
+  }>;
+}
+
+export const HiringPipelineSchema = SchemaFactory.createForClass(HiringPipeline);
+HiringPipelineSchema.index({ companyId: 1, stage: 1 });
+HiringPipelineSchema.index({ applicationId: 1 }, { unique: true });

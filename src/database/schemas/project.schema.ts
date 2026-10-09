@@ -202,3 +202,61 @@ export class Certificate {
 }
 
 export const CertificateSchema = SchemaFactory.createForClass(Certificate);
+
+export type ProjectTaskDocument = ProjectTask & Document;
+
+@Schema({ timestamps: true, collection: 'project_tasks' })
+export class ProjectTask {
+  @Prop({ required: true, index: true })
+  projectId: string;
+
+  @Prop({ required: true })
+  title: string;
+
+  @Prop({ required: true })
+  description: string;
+
+  @Prop({ default: 1 })
+  order: number;
+
+  @Prop({ default: 60 })
+  estimatedMinutes: number;
+
+  @Prop({ default: '' })
+  validationCriteria: string;
+}
+
+export const ProjectTaskSchema = SchemaFactory.createForClass(ProjectTask);
+ProjectTaskSchema.index({ projectId: 1, order: 1 });
+
+export type GitHubConnectionDocument = GitHubConnection & Document;
+
+@Schema({ timestamps: true, collection: 'github_connections' })
+export class GitHubConnection {
+  @Prop({ required: true, unique: true, index: true })
+  userId: string;
+
+  @Prop({ required: true, trim: true })
+  githubUsername: string;
+
+  @Prop({ default: '' })
+  accessToken?: string;
+
+  @Prop({ type: [Object], default: [] })
+  syncedRepos: Array<{
+    repoName: string;
+    repoUrl: string;
+    stars: number;
+    primaryLanguage: string;
+    lastSyncedAt: Date;
+    verifiedSkills: string[];
+  }>;
+
+  @Prop({ default: 0 })
+  totalCommitsVerified: number;
+
+  @Prop({ default: () => new Date() })
+  lastSyncedAt: Date;
+}
+
+export const GitHubConnectionSchema = SchemaFactory.createForClass(GitHubConnection);

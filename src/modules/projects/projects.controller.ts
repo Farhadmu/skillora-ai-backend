@@ -30,14 +30,22 @@ export class ProjectsController {
   }
 
   @Post('review-code')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Submit code snippet for automated AI code review and refactoring' })
   reviewCode(
     @Body('code') code: string,
     @Body('language') language: string,
+    @CurrentUser() user: any,
     @Body('context') context?: string,
-    @CurrentUser() user?: any,
   ) {
-    return this.projectsService.reviewCode(code, language, context, user?.id);
+    if (!code || typeof code !== 'string') {
+      throw new Error('Code is required');
+    }
+    if (code.length > 20000) {
+      throw new Error('Code payload exceeds maximum size limit of 20,000 characters');
+    }
+    return this.projectsService.reviewCode(code, language, context, user.id);
   }
 
   @Post(':id/submit')
