@@ -140,7 +140,8 @@ export class AuthService {
     }
 
     const tokens = await this.generateTokens(newUser);
-    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
+    const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
+    const verificationUrl = `${appUrl}/verify-email?token=${rawVerificationToken}`;
 
     const dispatch = await this.emailService.sendVerificationEmail(emailKey, verificationUrl);
 
@@ -244,7 +245,8 @@ export class AuthService {
 
     this.dataStore.saveUser(user);
 
-    const verificationUrl = `http://localhost:3000/verify-email?token=${rawVerificationToken}`;
+    const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
+    const verificationUrl = `${appUrl}/verify-email?token=${rawVerificationToken}`;
     const dispatch = await this.emailService.sendVerificationEmail(emailKey, verificationUrl);
 
     return {
@@ -321,7 +323,8 @@ export class AuthService {
 
     this.dataStore.saveUser(user);
 
-    const resetUrl = `http://localhost:3000/reset-password?token=${rawResetToken}`;
+    const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'https://skillora-ai-frontend.vercel.app';
+    const resetUrl = `${appUrl}/reset-password?token=${rawResetToken}`;
     const dispatch = await this.emailService.sendPasswordResetEmail(emailKey, resetUrl);
 
     return {
