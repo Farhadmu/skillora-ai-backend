@@ -301,3 +301,62 @@ export class HiringPipeline {
 export const HiringPipelineSchema = SchemaFactory.createForClass(HiringPipeline);
 HiringPipelineSchema.index({ companyId: 1, stage: 1 });
 HiringPipelineSchema.index({ applicationId: 1 }, { unique: true });
+
+export type InterviewInvitationDocument = InterviewInvitation & Document;
+
+@Schema({ timestamps: true, collection: 'interview_invitations' })
+export class InterviewInvitation {
+  @Prop({ required: true, unique: true, index: true })
+  id: string;
+
+  @Prop({ required: true, index: true })
+  applicationId: string;
+
+  @Prop({ required: true, index: true })
+  jobId: string;
+
+  @Prop({ required: true })
+  jobTitle: string;
+
+  @Prop({ required: true, index: true })
+  companyId: string;
+
+  @Prop({ required: true })
+  companyName: string;
+
+  @Prop({ required: true, index: true })
+  candidateId: string;
+
+  @Prop({ required: true })
+  candidateName: string;
+
+  @Prop({ default: '' })
+  candidateEmail: string;
+
+  @Prop({ required: true, enum: ['Technical', 'Behavioral', 'System Design', 'Cultural Fit'], default: 'Technical' })
+  interviewType: string;
+
+  @Prop({ required: true })
+  scheduledAt: Date;
+
+  @Prop({ default: 45 })
+  durationMinutes: number;
+
+  @Prop({ default: '' })
+  instructions: string;
+
+  @Prop({ default: '' })
+  meetingLink?: string;
+
+  @Prop({
+    default: 'SCHEDULED',
+    enum: ['SCHEDULED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'],
+    index: true,
+  })
+  status: string;
+}
+
+export const InterviewInvitationSchema = SchemaFactory.createForClass(InterviewInvitation);
+InterviewInvitationSchema.index({ candidateId: 1, status: 1 });
+InterviewInvitationSchema.index({ companyId: 1, status: 1 });
+

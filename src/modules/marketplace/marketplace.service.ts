@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
-import { Job, JobDocument, JobApplication, JobApplicationDocument } from '../../database/schemas/job.schema';
+import { Job, JobDocument, JobApplication, JobApplicationDocument, InterviewInvitation, InterviewInvitationDocument } from '../../database/schemas/job.schema';
 import { Profile, ProfileDocument } from '../../database/schemas/profile.schema';
 import { User, UserDocument } from '../../database/schemas/user.schema';
 import { Notification, NotificationDocument } from '../../database/schemas/communication.schema';
@@ -13,12 +13,14 @@ export class MarketplaceService {
   constructor(
     @InjectModel(Job.name) private readonly jobModel: Model<JobDocument>,
     @InjectModel(JobApplication.name) private readonly applicationModel: Model<JobApplicationDocument>,
+    @InjectModel(InterviewInvitation.name) private readonly invitationModel: Model<InterviewInvitationDocument>,
     @InjectModel(Profile.name) private readonly profileModel: Model<ProfileDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     @InjectModel(Notification.name) private readonly notificationModel: Model<NotificationDocument>,
     @InjectModel(AnalyticsEvent.name) private readonly analyticsModel: Model<AnalyticsEventDocument>,
     private readonly aiService: AiService,
   ) {}
+
 
   /**
    * Search and browse verified jobs with AI Match Score calculation
@@ -159,7 +161,7 @@ export class MarketplaceService {
    * Employer Pipeline Management with Strict Multi-Tenant Isolation
    */
   async getEmployerCandidates(user: any) {
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
     const allJobs = await this.jobModel.find().lean();
     const employerJobs = allJobs.filter((j: any) => {
       if (isAdmin) return true;
@@ -197,6 +199,197 @@ export class MarketplaceService {
     return enriched;
   }
 
+  /**
+   * Real MongoDB Talent Discovery & Candidate Matching
+   */
+  async searchTalent(
+    user: any,
+    filters?: {
+      query?: string;
+      skill?: string;
+      minReadiness?: number;
+      targetRole?: string;
+    },
+  ) {
+    const learnerUsers = await this.userModel.find({ role: { $in: ['LEARNER', 'learner'] } }).lean();
+    const learnerIds = learnerUsers.map((u: any) => u.id || u._id.toString());
+
+    const profileFilter: any = {};
+    if (learnerIds.length > 0) {
+      profileFilter.userId = { $in: learnerIds };
+    }
+    if (filters?.minReadiness) {
+      profileFilter.readinessScore = { $gte: Number(filters.minReadiness) };
+    }
+    if (filters?.targetRole && filters.targetRole !== 'all') {
+      profileFilter.targetRole = new RegExp(filters.targetRole, 'i');
+    }
+
+    const profiles = await this.profileModel.find(profileFilter).lean();
+
+    const results = profiles.map((p: any) => {
+      const u = learnerUsers.find((lu: any) => (lu.id || lu._id.toString()) === p.userId);
+      const skills = p.skills || [];
+      const verifiedCount = skills.filter((s: any) => s.verified).length;
+      
+      let matchScore = p.readinessScore || 0;
+      if (filters?.skill) {
+        const hasSkill = skills.some((s: any) => 
+          s.name?.toLowerCase().includes(filters.skill!.toLowerCase())
+        );
+        if (hasSkill) matchScore = Math.min(matchScore + 15, 100);
+      }
+
+      return {
+        id: p.userId || p._id.toString(),
+        name: p.name || u?.name || 'Verified Learner',
+        email: p.email || u?.email || '',
+        title: p.title || p.targetRole || 'Software Engineer',
+        targetRole: p.targetRole || 'Full-Stack Developer',
+        bio: p.bio || 'Skillora-trained engineer with verified technical evidence.',
+        readinessScore: p.readinessScore || 0,
+        matchScore,
+        skills: skills.map((s: any) => ({
+          name: s.name,
+          proficiency: s.proficiency || 80,
+          verified: !!s.verified,
+        })),
+        verifiedSkillsCount: verifiedCount,
+        githubUrl: p.githubUrl || '',
+        portfolioUrl: p.portfolioUrl || '',
+        location: p.location || 'Remote',
+        education: p.education || [],
+        experience: p.experience || [],
+        matchExplanation: `Verified readiness score of ${p.readinessScore || 0}% with ${verifiedCount} tamper-proof skills assessed through real curriculum submissions.`,
+      };
+    });
+
+    if (filters?.query) {
+      const q = filters.query.toLowerCase();
+      return results.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          r.title.toLowerCase().includes(q) ||
+          r.targetRole.toLowerCase().includes(q) ||
+          r.skills.some((s: any) => s.name.toLowerCase().includes(q)),
+      );
+    }
+
+    return results;
+  }
+
+  /**
+   * Schedule Interview with Candidate & Push Notification
+   */
+  async scheduleInterview(
+    user: any,
+    dto: {
+      applicationId: string;
+      scheduledAt: string | Date;
+      interviewType?: string;
+      durationMinutes?: number;
+      meetingLink?: string;
+      instructions?: string;
+    },
+  ) {
+    const query: any[] = [{ id: dto.applicationId }];
+    if (isValidObjectId(dto.applicationId)) query.push({ _id: dto.applicationId });
+
+    const app = await this.applicationModel.findOne({ $or: query });
+    if (!app) {
+      throw new NotFoundException(`Application ${dto.applicationId} not found`);
+    }
+
+    const jobQuery: any[] = [{ id: app.jobId }];
+    if (isValidObjectId(app.jobId)) jobQuery.push({ _id: app.jobId });
+    const job = await this.jobModel.findOne({ $or: jobQuery }).lean();
+
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+    if (!isAdmin && job) {
+      const isOwner =
+        (job as any).ownerUserId === user.id ||
+        (job as any).creatorUserId === user.id ||
+        job.companyId === user.id ||
+        (user.companyName && job.companyName?.toLowerCase() === user.companyName.toLowerCase());
+      if (!isOwner) {
+        throw new ForbiddenException('You do not have authorization to schedule interviews for this job application.');
+      }
+    }
+
+    const candidateUser = await this.userModel.findOne({
+      $or: [{ id: app.userId }, { _id: isValidObjectId(app.userId) ? app.userId : undefined }],
+    }).lean();
+
+    const invitationId = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const invitation = await this.invitationModel.create({
+      id: invitationId,
+      applicationId: app.id || app._id.toString(),
+      jobId: job?.id || app.jobId,
+      jobTitle: job?.title || app.jobTitle,
+      companyId: job?.companyId || user.id,
+      companyName: job?.companyName || app.companyName,
+      candidateId: app.userId,
+      candidateName: app.candidateName,
+      candidateEmail: candidateUser?.email || '',
+      interviewType: dto.interviewType || 'Technical',
+      scheduledAt: new Date(dto.scheduledAt),
+      durationMinutes: dto.durationMinutes || 45,
+      instructions: dto.instructions || 'Technical deep dive and architectural review.',
+      meetingLink: dto.meetingLink || `https://meet.skillora.ai/room-${Date.now().toString(36)}`,
+      status: 'SCHEDULED',
+    });
+
+    app.status = 'interview';
+    await app.save();
+
+    await this.notificationModel.create({
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      userId: app.userId,
+      title: `Interview Scheduled: ${job?.title || app.jobTitle}`,
+      message: `${app.companyName} scheduled a ${dto.interviewType || 'Technical'} interview with you on ${new Date(dto.scheduledAt).toLocaleDateString()}. Meeting link is ready.`,
+      type: 'interview',
+      link: '/learner/jobs/applications',
+    });
+
+    await this.analyticsModel.create({
+      eventName: 'interview_scheduled',
+      userId: user.id,
+      metadata: {
+        applicationId: app.id,
+        candidateId: app.userId,
+        jobTitle: app.jobTitle,
+        scheduledAt: dto.scheduledAt,
+      },
+    }).catch(() => {});
+
+    return invitation.toObject ? invitation.toObject() : invitation;
+  }
+
+  async getEmployerInterviews(user: any) {
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+    if (isAdmin) {
+      return this.invitationModel.find().sort({ scheduledAt: 1 }).lean();
+    }
+    const allJobs = await this.jobModel.find().lean();
+    const employerJobs = allJobs.filter((j: any) =>
+      j.ownerUserId === user.id ||
+      j.companyId === user.id ||
+      (user.companyName && j.companyName?.toLowerCase() === user.companyName.toLowerCase())
+    );
+    const jobIds = employerJobs.map((j: any) => j.id || j._id.toString());
+    return this.invitationModel
+      .find({ $or: [{ companyId: user.id }, { jobId: { $in: jobIds } }] })
+      .sort({ scheduledAt: 1 })
+      .lean();
+  }
+
+  async getLearnerInterviews(user: any) {
+    return this.invitationModel
+      .find({ candidateId: user.id })
+      .sort({ scheduledAt: 1 })
+      .lean();
+  }
+
   async updateApplicationStage(applicationId: string, stage: any, user: any) {
     const query: any[] = [{ id: applicationId }];
     if (isValidObjectId(applicationId)) query.push({ _id: applicationId });
@@ -210,7 +403,7 @@ export class MarketplaceService {
     if (isValidObjectId(app.jobId)) jobQuery.push({ _id: app.jobId });
     const job = await this.jobModel.findOne({ $or: jobQuery }).lean();
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
     if (!isAdmin && job) {
       const isOwner =
         (job as any).ownerUserId === user.id ||
@@ -340,7 +533,7 @@ Return ONLY a JSON object matching this schema:
     if (isValidObjectId(app.jobId)) jobQuery.push({ _id: app.jobId });
     const job = await this.jobModel.findOne({ $or: jobQuery }).lean();
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
     if (!isAdmin && job) {
       const isOwner =
         (job as any).ownerUserId === user.id ||

@@ -84,6 +84,47 @@ export class MarketplaceController {
     return this.marketplaceService.aiExtractJobSkills(description);
   }
 
+  @Get('talent/search')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Search verified learners and talent pool based on skill evidence and readiness' })
+  searchTalent(
+    @CurrentUser() user: any,
+    @Query('query') query?: string,
+    @Query('skill') skill?: string,
+    @Query('minReadiness') minReadiness?: number,
+    @Query('targetRole') targetRole?: string,
+  ) {
+    return this.marketplaceService.searchTalent(user, { query, skill, minReadiness, targetRole });
+  }
+
+  @Post('interviews/schedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Schedule an interview invitation for an applicant' })
+  scheduleInterview(@CurrentUser() user: any, @Body() dto: any) {
+    return this.marketplaceService.scheduleInterview(user, dto);
+  }
+
+  @Get('interviews')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.EMPLOYER, Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all scheduled interviews for employer openings' })
+  getEmployerInterviews(@CurrentUser() user: any) {
+    return this.marketplaceService.getEmployerInterviews(user);
+  }
+
+  @Get('interviews/my')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all scheduled interviews for candidate' })
+  getLearnerInterviews(@CurrentUser() user: any) {
+    return this.marketplaceService.getLearnerInterviews(user);
+  }
+
   @Post('candidates/:id/interview-questions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.EMPLOYER, Role.ADMIN)

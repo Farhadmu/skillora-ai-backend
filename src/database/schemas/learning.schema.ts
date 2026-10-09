@@ -140,6 +140,9 @@ SavedResourceSchema.index({ userId: 1, resourceId: 1 }, { unique: true });
 
 @Schema({ timestamps: true, collection: 'cohorts' })
 export class Cohort {
+  @Prop({ index: true })
+  id?: string;
+
   @Prop({ required: true, trim: true })
   name: string;
 
@@ -228,3 +231,128 @@ export class LearningProgress {
 
 export const LearningProgressSchema = SchemaFactory.createForClass(LearningProgress);
 LearningProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+
+export type AssignmentDocument = Assignment & Document;
+export type AssignmentSubmissionDocument = AssignmentSubmission & Document;
+
+@Schema({ _id: false })
+export class RubricCriterion {
+  @Prop({ required: true })
+  criteria: string;
+
+  @Prop({ default: 25, min: 1 })
+  maxPoints: number;
+
+  @Prop({ default: '' })
+  description?: string;
+}
+
+export const RubricCriterionSchema = SchemaFactory.createForClass(RubricCriterion);
+
+@Schema({ timestamps: true, collection: 'assignments' })
+export class Assignment {
+  @Prop({ required: true, unique: true, index: true })
+  id: string;
+
+  @Prop({ required: true, index: true })
+  educatorId: string;
+
+  @Prop({ default: 'Skillora Lead Faculty' })
+  educatorName: string;
+
+  @Prop({ required: true, index: true })
+  courseId: string;
+
+  @Prop({ default: null, index: true })
+  cohortId?: string;
+
+  @Prop({ required: true, trim: true })
+  title: string;
+
+  @Prop({ required: true })
+  description: string;
+
+  @Prop({ required: true, index: true })
+  targetSkill: string;
+
+  @Prop({ type: [RubricCriterionSchema], default: [] })
+  rubric: RubricCriterion[];
+
+  @Prop({ default: 100, min: 1 })
+  totalPoints: number;
+
+  @Prop({ default: null })
+  dueDate?: Date;
+
+  @Prop({ default: 'published', enum: ['draft', 'published', 'archived'], index: true })
+  status: string;
+}
+
+export const AssignmentSchema = SchemaFactory.createForClass(Assignment);
+AssignmentSchema.index({ courseId: 1, status: 1 });
+AssignmentSchema.index({ educatorId: 1 });
+
+@Schema({ timestamps: true, collection: 'assignment_submissions' })
+export class AssignmentSubmission {
+  @Prop({ required: true, unique: true, index: true })
+  id: string;
+
+  @Prop({ required: true, index: true })
+  assignmentId: string;
+
+  @Prop({ required: true })
+  assignmentTitle: string;
+
+  @Prop({ required: true, index: true })
+  courseId: string;
+
+  @Prop({ default: null, index: true })
+  cohortId?: string;
+
+  @Prop({ required: true, index: true })
+  learnerId: string;
+
+  @Prop({ required: true })
+  learnerName: string;
+
+  @Prop({ required: true })
+  learnerEmail: string;
+
+  @Prop({ required: true })
+  content: string;
+
+  @Prop({ default: '' })
+  repositoryUrl?: string;
+
+  @Prop({ default: 1 })
+  submissionVersion: number;
+
+  @Prop({
+    default: 'submitted',
+    enum: ['submitted', 'under_review', 'reviewed', 'revision_requested'],
+    index: true,
+  })
+  status: string;
+
+  @Prop({ default: null })
+  score?: number;
+
+  @Prop({ type: [Object], default: [] })
+  rubricScores?: Array<{ criteria: string; pointsAwarded: number; feedback?: string }>;
+
+  @Prop({ default: '' })
+  feedback?: string;
+
+  @Prop({ default: null, index: true })
+  reviewerId?: string;
+
+  @Prop({ default: null })
+  reviewedAt?: Date;
+
+  @Prop({ default: () => new Date() })
+  submittedAt: Date;
+}
+
+export const AssignmentSubmissionSchema = SchemaFactory.createForClass(AssignmentSubmission);
+AssignmentSubmissionSchema.index({ assignmentId: 1, learnerId: 1 });
+AssignmentSubmissionSchema.index({ learnerId: 1, status: 1 });

@@ -92,9 +92,17 @@ export class SkillEvidence {
   @Prop({ default: true })
   verified: boolean;
 
+  @Prop({
+    default: 'VERIFIED',
+    enum: ['DECLARED', 'PRACTICED', 'ASSESSED', 'PROJECT_DEMONSTRATED', 'VERIFIED'],
+    index: true,
+  })
+  status: string;
+
   @Prop({ default: 'Skillora Assessment Engine' })
   issuer: string;
 }
+
 
 export const SkillEvidenceSchema = SchemaFactory.createForClass(SkillEvidence);
 SkillEvidenceSchema.index({ userId: 1, skillName: 1 });
