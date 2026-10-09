@@ -13,14 +13,45 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  // Explicit CORS origins
-  const corsOrigins = process.env.CORS_ORIGINS
+  // Explicit production CORS origins supporting Vercel, Render, and custom domains
+  const defaultAllowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'https://skillora.ai',
+    'https://app.skillora.ai',
+    'https://skillora-ai-frontend.vercel.app',
+  ];
+
+  const envOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
-    : ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://skillora.ai', 'https://app.skillora.ai'];
+    : [];
+
+  const allowedOriginsSet = new Set([...defaultAllowedOrigins, ...envOrigins]);
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      // Allow non-browser requests (mobile apps, curl, server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow if explicit match or matches Vercel / Render / localhost domains
+      if (
+        allowedOriginsSet.has(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.onrender.com') ||
+        origin.includes('localhost')
+      ) {
+        return callback(null, true);
+      }
+
+      logger.warn(`CORS blocked for origin: ${origin}`);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Authorization,X-Requested-With,Accept,Origin',
     credentials: true,
   });
 
