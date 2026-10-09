@@ -31,6 +31,22 @@ export class CareerNavigatorController {
     );
   }
 
+  @Post('research')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Run comprehensive AI research and skill gap analysis for any target role' })
+  researchRole(@CurrentUser() user: any, @Body('roleTitle') roleTitle: string) {
+    return this.careerNavigatorService.researchRole(user.id, roleTitle);
+  }
+
+  @Post('job-readiness')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate ATS Resume, Portfolio showcase, and LinkedIn optimization for target role' })
+  generateJobReadiness(@CurrentUser() user: any, @Body('targetRole') targetRole?: string) {
+    return this.careerNavigatorService.generateJobReadinessSuite(user.id, targetRole);
+  }
+
   @Post('analyze-jd')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -39,3 +55,4 @@ export class CareerNavigatorController {
     return this.careerNavigatorService.analyzeJobDescription(user.id, jdText);
   }
 }
+
